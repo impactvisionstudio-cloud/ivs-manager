@@ -61,7 +61,7 @@ const SEED = {
     { id: "5", projectId: "p1", title: "Corte inicial para aprovação", done: false },
     { id: "6", projectId: "p1", title: "Entrega final", done: false },
   ],
-} as Record<SheetName, Record<string, unknown>[]>;
+} as unknown as Record<SheetName, Record<string, unknown>[]>;
 
 const ALL_SHEETS = Object.keys(SEED) as SheetName[];
 
