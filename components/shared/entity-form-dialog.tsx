@@ -33,7 +33,7 @@ interface EntityFormDialogProps {
   title: string;
   description?: string;
   fields: FieldConfig[];
-  initialValues?: Record<string, unknown>;
+  initialValues?: object;
   onSubmit: (values: Record<string, unknown>) => Promise<unknown> | unknown;
   submitLabel?: string;
 }
@@ -52,15 +52,17 @@ export function EntityFormDialog({
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
-    if (open) {
-      const defaults: Record<string, unknown> = {};
-      for (const f of fields) {
-        defaults[f.name] = initialValues?.[f.name] ?? (f.type === "checkbox" ? false : "");
-      }
-      setValues(defaults);
+  if (open) {
+    const source = (initialValues ?? {}) as Record<string, unknown>;
+    const defaults: Record<string, unknown> = {};
+    for (const f of fields) {
+      defaults[f.name] =
+        source[f.name] ?? (f.type === "checkbox" ? false : "");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, initialValues]);
+    setValues(defaults);
+  }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+}, [open, initialValues]);
 
   const setField = (name: string, value: unknown) => setValues((prev) => ({ ...prev, [name]: value }));
 
