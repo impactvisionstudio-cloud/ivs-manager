@@ -1,0 +1,72 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 240 10% 3.9%;
+    --foreground: 0 0% 96%;
+
+    --card: 240 4% 10%;
+    --card-foreground: 0 0% 96%;
+
+    --popover: 240 6% 8%;
+    --popover-foreground: 0 0% 96%;
+
+    --primary: 262 83% 58%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 271 91% 65%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 240 4% 15%;
+    --muted-foreground: 240 5% 64%;
+
+    --accent: 240 5% 16%;
+    --accent-foreground: 0 0% 96%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 240 5% 18%;
+    --input: 240 5% 18%;
+    --ring: 262 83% 58%;
+
+    --radius: 0.75rem;
+
+    --font-sans: "Inter", ui-sans-serif, system-ui;
+    --font-display: "Inter", ui-sans-serif, system-ui;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground antialiased;
+    font-feature-settings: "cv11", "ss01";
+  }
+  ::selection {
+    @apply bg-primary-600/40 text-white;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-muted rounded-full;
+  }
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  .glass {
+    @apply bg-card/60 backdrop-blur-xl border border-border/60;
+  }
+  .text-gradient {
+    @apply bg-gradient-primary bg-clip-text text-transparent;
+  }
+}
