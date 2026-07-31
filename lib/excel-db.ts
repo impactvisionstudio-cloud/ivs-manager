@@ -44,7 +44,7 @@ export type SheetName =
   | "equipe"
   | "checklist";
 
-const SEED: Record<SheetName, Record<string, unknown>[]> = {
+const SEED = {
   clientes: mockClients,
   projetos: mockProjects.map((p) => ({ ...p, team: p.team.join(",") })),
   negocios: mockDeals,
@@ -61,7 +61,7 @@ const SEED: Record<SheetName, Record<string, unknown>[]> = {
     { id: "5", projectId: "p1", title: "Corte inicial para aprovação", done: false },
     { id: "6", projectId: "p1", title: "Entrega final", done: false },
   ],
-};
+} as Record<SheetName, Record<string, unknown>[]>;
 
 const ALL_SHEETS = Object.keys(SEED) as SheetName[];
 
