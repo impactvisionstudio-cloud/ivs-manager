@@ -141,60 +141,6 @@ function coerceRow(sheet: SheetName, row: Record<string, unknown>) {
   return out;
 }
 
-export function listItems<T = Record<string, unknown>>(sheet: SheetName): T[] {
-  const wb = readWorkbook();
-  const ws = wb.Sheets[sheet];
-  if (!ws) return [];
-  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
-  return rows.map((r) => coerceRow(sheet, r)) as T[];
-}
-
-export function createItem<T extends Record<string, unknown>>(sheet: SheetName, data: Omit<T, "id"> & { id?: string }): T {
-  const wb = readWorkbook();
-  const rows = listItems<Record<string, unknown>>(sheet);
-  const id = data.id || `${sheet.slice(0, 2)}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
-  const newRow = { ...data, id } as Record<string, unknown>;
-  const nextRows = [...rows, newRow];
-  const ws = XLSX.utils.json_to_sheet(serializeRows(sheet, nextRows), { header: headerFor(nextRows) });
-  wb.Sheets[sheet] = ws;
-  if (!wb.SheetNames.includes(sheet)) wb.SheetNames.push(sheet);
-  writeWorkbook(wb);
-  log("criado em", sheet, "->", id);
- return newRow as unknown as T;
-}
-
-export function updateItem<T extends Record<string, unknown>>(sheet: SheetName, id: string, patch: Partial<T>): T | null {
-  const wb = readWorkbook();
-  const rows = listItems<Record<string, unknown>>(sheet);
-  const idx = rows.findIndex((r) => String(r.id) === String(id));
-  if (idx === -1) {
-    log("update falhou: id não encontrado", sheet, id);
-    return null;
-  }
-  const updated = { ...rows[idx], ...patch, id };
-  rows[idx] = updated;
-  const ws = XLSX.utils.json_to_sheet(serializeRows(sheet, rows), { header: headerFor(rows) });
-  wb.Sheets[sheet] = ws;
-  writeWorkbook(wb);
-  log("atualizado em", sheet, "->", id);
-  return updated as unknown as T;
-}
-
-export function deleteItem(sheet: SheetName, id: string): boolean {
-  const wb = readWorkbook();
-  const rows = listItems<Record<string, unknown>>(sheet);
-  const next = rows.filter((r) => String(r.id) !== String(id));
-  if (next.length === rows.length) {
-    log("delete falhou: id não encontrado", sheet, id);
-    return false;
-  }
-  const ws = XLSX.utils.json_to_sheet(serializeRows(sheet, next), { header: headerFor(next) });
-  wb.Sheets[sheet] = ws;
-  writeWorkbook(wb);
-  log("excluído em", sheet, "->", id);
-  return true;
-}
-
 /** Une as colunas de todas as linhas (algumas linhas têm campos opcionais ausentes, ex: contratos sem data de assinatura). */
 function headerFor(rows: Record<string, unknown>[]): string[] {
   const keys = new Set<string>();
@@ -210,6 +156,89 @@ function serializeRows(sheet: SheetName, rows: Record<string, unknown>[]) {
     if (Array.isArray(out.team)) out.team = (out.team as string[]).join(",");
     return out;
   });
+}
+
+export function listItems<T = Record<string, unknown>>(sheet: SheetName): T[] {
+  const wb = readWorkbook();
+  const ws = wb.Sheets[sheet];
+  if (!ws) return [];
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" });
+  return rows.map((r) => coerceRow(sheet, r)) as T[];
+}
+
+export function createItem<T extends Record<string, unknown>>(sheet: SheetName, data: Omit<T, "id"> & { id?: string }): T {
+  const wb = readWorkbook();
+  const ws = wb.Sheets[sheet];
+  const rows = ws
+    ? XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" }).map((r) => coerceRow(sheet, r))
+    : [];
+
+  const id = data.id || `${sheet.slice(0, 2)}_${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
+  const newRow = { ...data, id } as Record<string, unknown>;
+  const nextRows = [...rows, newRow];
+
+  const newWs = XLSX.utils.json_to_sheet(serializeRows(sheet, nextRows), { header: headerFor(nextRows) });
+  wb.Sheets[sheet] = newWs;
+  if (!wb.SheetNames.includes(sheet)) wb.SheetNames.push(sheet);
+
+  writeWorkbook(wb);
+  log("criado em", sheet, "->", id);
+
+  return newRow as unknown as T;
+}
+
+export function updateItem<T extends Record<string, unknown>>(sheet: SheetName, id: string, patch: Partial<T>): T | null {
+  const wb = readWorkbook();
+  const ws = wb.Sheets[sheet];
+
+  if (!ws) {
+    throw new ExcelDbError(`A aba ${sheet} não existe`);
+  }
+
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" }).map((r) => coerceRow(sheet, r));
+
+  const idx = rows.findIndex((r) => String(r.id) === String(id));
+  if (idx === -1) {
+    log("update falhou: id não encontrado", sheet, id);
+    return null;
+  }
+
+  const updated = { ...rows[idx], ...patch, id };
+  rows[idx] = updated;
+
+  const newWs = XLSX.utils.json_to_sheet(serializeRows(sheet, rows), { header: headerFor(rows) });
+  wb.Sheets[sheet] = newWs;
+
+  writeWorkbook(wb);
+  log("atualizado em", sheet, "->", id);
+
+  return updated as unknown as T;
+}
+
+export function deleteItem(sheet: SheetName, id: string): boolean {
+  const wb = readWorkbook();
+  const ws = wb.Sheets[sheet];
+
+  if (!ws) {
+    log("delete falhou: aba não encontrada", sheet);
+    return false;
+  }
+
+  const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(ws, { defval: "" }).map((r) => coerceRow(sheet, r));
+  const next = rows.filter((r) => String(r.id) !== String(id));
+
+  if (next.length === rows.length) {
+    log("delete falhou: id não encontrado", sheet, id);
+    return false;
+  }
+
+  const newWs = XLSX.utils.json_to_sheet(serializeRows(sheet, next), { header: headerFor(next) });
+  wb.Sheets[sheet] = newWs;
+
+  writeWorkbook(wb);
+  log("excluído em", sheet, "->", id);
+
+  return true;
 }
 
 export function getDbFileBuffer(): Buffer {

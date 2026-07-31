@@ -65,6 +65,7 @@ export interface Client {
   company: string;
   email: string;
   phone: string;
+  address?: string;
   avatarUrl?: string;
   status: "ativo" | "inativo" | "prospect";
   totalBilled: number;

@@ -24,7 +24,8 @@ const statusVariant: Record<Client["status"], "success" | "secondary" | "warning
 const FIELDS: FieldConfig[] = [
   { name: "name", label: "Nome", type: "text", required: true },
   { name: "company", label: "Empresa", type: "text" },
-  { name: "endereço", label: "E-mail", type: "text" },
+  { name: "email", label: "E-mail", type: "text" },
+  { name: "address", label: "Endereço", type: "text" },
   { name: "phone", label: "Telefone", type: "text" },
   {
     name: "status",
@@ -138,7 +139,7 @@ export default function ClientesPage() {
           if (editing) {
             return await update(editing.id, values as Partial<Client>);
           }
-          return await create({ ...(values as Omit<Client, "id" | "createdAt">), createdAt: new Date().toISOString() } as Omit<Client, "id">);
+          return await create(values as Omit<Client, "id">);
         }}
       />
 
