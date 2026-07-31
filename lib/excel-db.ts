@@ -160,7 +160,7 @@ export function createItem<T extends Record<string, unknown>>(sheet: SheetName, 
   if (!wb.SheetNames.includes(sheet)) wb.SheetNames.push(sheet);
   writeWorkbook(wb);
   log("criado em", sheet, "->", id);
-  return newRow as T;
+ return newRow as unknown as T;
 }
 
 export function updateItem<T extends Record<string, unknown>>(sheet: SheetName, id: string, patch: Partial<T>): T | null {
@@ -177,7 +177,7 @@ export function updateItem<T extends Record<string, unknown>>(sheet: SheetName, 
   wb.Sheets[sheet] = ws;
   writeWorkbook(wb);
   log("atualizado em", sheet, "->", id);
-  return updated as T;
+  return updated as unknown as T;
 }
 
 export function deleteItem(sheet: SheetName, id: string): boolean {
