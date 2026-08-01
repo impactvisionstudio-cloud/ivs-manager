@@ -6,14 +6,15 @@ import { eq } from "drizzle-orm";
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-export async function PATCH(req: NextRequest, { params }: { params: { id: string } }) {
+export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const body = await req.json();
 
     const [item] = await db
       .update(diagnostics)
       .set(body)
-      .where(eq(diagnostics.id, params.id))
+      .where(eq(diagnostics.id, id))
       .returning();
 
     if (!item) {
@@ -27,11 +28,13 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
   }
 }
 
-export async function DELETE(_req: NextRequest, { params }: { params: { id: string } }) {
+export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
+
     const [item] = await db
       .delete(diagnostics)
-      .where(eq(diagnostics.id, params.id))
+      .where(eq(diagnostics.id, id))
       .returning();
 
     if (!item) {
