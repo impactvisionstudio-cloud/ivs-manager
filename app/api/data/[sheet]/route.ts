@@ -70,16 +70,19 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ she
         [item] = await db.insert(clients).values(body).returning();
         break;
       case "agenda":
-        [item] = await db.insert(agendaEvents).values(parseDates(body, ["start", "end"])).returning();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [item] = await db.insert(agendaEvents).values(parseDates(body, ["start", "end"]) as any).returning();
         break;
       case "financeiro":
-        [item] = await db.insert(transactions).values(parseDates(body, ["date"])).returning();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [item] = await db.insert(transactions).values(parseDates(body, ["date"]) as any).returning();
         break;
       case "equipamentos":
         [item] = await db.insert(equipments).values(body).returning();
         break;
       case "contratos":
-        [item] = await db.insert(contracts).values(parseDates(body, ["signedAt", "expiresAt"])).returning();
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [item] = await db.insert(contracts).values(parseDates(body, ["signedAt", "expiresAt"]) as any).returning();
         break;
       case "equipe":
         [item] = await db.insert(users).values(body).returning();
