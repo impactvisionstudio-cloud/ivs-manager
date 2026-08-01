@@ -31,31 +31,27 @@ export type Permission =
   | "agenda.manage"
   | "clientes.manage"
   | "crm.manage"
-  | "projetos.manage"
   | "equipe.manage"
   | "financeiro.view"
   | "financeiro.manage"
-  | "equipamentos.manage"
   | "contratos.manage"
-  | "arquivos.manage"
   | "ia.use"
   | "admin.access";
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   administrador: [
-    "dashboard.view", "agenda.manage", "clientes.manage", "crm.manage", "projetos.manage",
-    "equipe.manage", "financeiro.view", "financeiro.manage", "equipamentos.manage",
-    "contratos.manage", "arquivos.manage", "ia.use", "admin.access",
+    "dashboard.view", "agenda.manage", "clientes.manage", "crm.manage",
+    "equipe.manage", "financeiro.view", "financeiro.manage",
+    "contratos.manage", "ia.use", "admin.access",
   ],
   gestor: [
-    "dashboard.view", "agenda.manage", "clientes.manage", "crm.manage", "projetos.manage",
-    "equipe.manage", "financeiro.view", "equipamentos.manage", "contratos.manage",
-    "arquivos.manage", "ia.use",
+    "dashboard.view", "agenda.manage", "clientes.manage", "crm.manage",
+    "equipe.manage", "financeiro.view", "contratos.manage", "ia.use",
   ],
-  editor: ["dashboard.view", "agenda.manage", "projetos.manage", "arquivos.manage", "ia.use"],
-  designer: ["dashboard.view", "agenda.manage", "projetos.manage", "arquivos.manage", "ia.use"],
-  videomaker: ["dashboard.view", "agenda.manage", "projetos.manage", "equipamentos.manage", "arquivos.manage", "ia.use"],
-  social_media: ["dashboard.view", "agenda.manage", "projetos.manage", "clientes.manage", "arquivos.manage", "ia.use"],
+  editor: ["dashboard.view", "agenda.manage", "ia.use"],
+  designer: ["dashboard.view", "agenda.manage", "ia.use"],
+  videomaker: ["dashboard.view", "agenda.manage", "ia.use"],
+  social_media: ["dashboard.view", "agenda.manage", "clientes.manage", "ia.use"],
   financeiro: ["dashboard.view", "financeiro.view", "financeiro.manage", "contratos.manage", "clientes.manage"],
 };
 
@@ -126,6 +122,12 @@ export interface Contract {
   id: string;
   title: string;
   clientName: string;
+  clientDocument?: string;
+  clientAddress?: string;
+  clientPhone?: string;
+  clientEmail?: string;
+  serviceDescription?: string;
+  paymentType?: "integral" | "entrada";
   status: "rascunho" | "enviado" | "assinado" | "expirado";
   value: number;
   signedAt?: string;

@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { clients, agendaEvents, transactions, equipments, contracts, users } from "@/lib/db/schema";
+import { clients, agendaEvents, transactions, contracts, users } from "@/lib/db/schema";
 
-type SheetName = "clientes" | "agenda" | "financeiro" | "equipamentos" | "contratos" | "equipe";
+type SheetName = "clientes" | "agenda" | "financeiro" | "contratos" | "equipe";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const VALID_SHEETS: SheetName[] = ["clientes", "agenda", "financeiro", "equipamentos", "contratos", "equipe"];
+const VALID_SHEETS: SheetName[] = ["clientes", "agenda", "financeiro", "contratos", "equipe"];
 
 function isValidSheet(sheet: string): sheet is SheetName {
   return (VALID_SHEETS as string[]).includes(sheet);
@@ -39,9 +39,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ she
         break;
       case "financeiro":
         items = await db.select().from(transactions);
-        break;
-      case "equipamentos":
-        items = await db.select().from(equipments);
         break;
       case "contratos":
         items = await db.select().from(contracts);
@@ -76,9 +73,6 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ she
       case "financeiro":
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         [item] = await db.insert(transactions).values(parseDates(body, ["date"]) as any).returning();
-        break;
-      case "equipamentos":
-        [item] = await db.insert(equipments).values(body).returning();
         break;
       case "contratos":
         // eslint-disable-next-line @typescript-eslint/no-explicit-any

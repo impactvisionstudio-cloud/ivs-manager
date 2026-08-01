@@ -15,7 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select } from "@/components/ui/select";
 
-export type FieldType = "text" | "number" | "date" | "datetime-local" | "textarea" | "select" | "checkbox";
+export type FieldType = "text" | "number" | "currency" | "date" | "datetime-local" | "textarea" | "select" | "checkbox";
 
 export interface FieldConfig {
   name: string;
@@ -25,6 +25,22 @@ export interface FieldConfig {
   required?: boolean;
   placeholder?: string;
   colSpan?: 1 | 2;
+}
+
+function formatCurrencyDisplay(raw: unknown): string {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  const cents = parseInt(digits, 10);
+  return (cents / 100).toLocaleString("pt-BR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+}
+
+function parseCurrencyToNumber(display: unknown): number {
+  const digits = String(display ?? "").replace(/\D/g, "");
+  if (!digits) return 0;
+  return parseInt(digits, 10) / 100;
 }
 
 interface EntityFormDialogProps {
@@ -56,8 +72,9 @@ export function EntityFormDialog({
     const source = (initialValues ?? {}) as Record<string, unknown>;
     const defaults: Record<string, unknown> = {};
     for (const f of fields) {
+      const raw = source[f.name] ?? (f.type === "checkbox" ? false : "");
       defaults[f.name] =
-        source[f.name] ?? (f.type === "checkbox" ? false : "");
+        f.type === "currency" ? formatCurrencyDisplay(raw) : raw;
     }
     setValues(defaults);
   }
@@ -70,9 +87,15 @@ export function EntityFormDialog({
     e.preventDefault();
     setSaving(true);
     try {
-      const payload: Record<string, unknown> = {};
+     const payload: Record<string, unknown> = {};
       for (const f of fields) {
-        payload[f.name] = f.type === "number" ? Number(values[f.name] ?? 0) : values[f.name];
+        if (f.type === "number") {
+          payload[f.name] = Number(values[f.name] ?? 0);
+        } else if (f.type === "currency") {
+          payload[f.name] = parseCurrencyToNumber(values[f.name]);
+        } else {
+          payload[f.name] = values[f.name];
+        }
       }
       const result = await onSubmit(payload);
       // create/update retornam null quando a chamada falha (e já mostram um
@@ -140,6 +163,18 @@ export function EntityFormDialog({
                   />
                   {f.label}
                 </label>
+              )}
+
+              {f.type === "currency" && (
+                <Input
+                  id={f.name}
+                  type="text"
+                  inputMode="numeric"
+                  required={f.required}
+                  placeholder="0,00"
+                  value={(values[f.name] as string) ?? ""}
+                  onChange={(e) => setField(f.name, formatCurrencyDisplay(e.target.value))}
+                />
               )}
 
               {(f.type === "text" || f.type === "number" || f.type === "date" || f.type === "datetime-local") && (

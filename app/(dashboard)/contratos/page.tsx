@@ -12,6 +12,7 @@ import { useCollection } from "@/lib/hooks/use-collection";
 import { EntityFormDialog, type FieldConfig } from "@/components/shared/entity-form-dialog";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { DownloadSheetButton } from "@/components/shared/download-sheet-button";
+import { generateContractPdf } from "@/lib/pdf/contract-template";
 
 const statusVariant: Record<Contract["status"], "success" | "secondary" | "warning" | "danger"> = {
   assinado: "success",
@@ -29,8 +30,22 @@ const statusLabel: Record<Contract["status"], string> = {
 
 const FIELDS: FieldConfig[] = [
   { name: "title", label: "Título do contrato", type: "text", required: true, colSpan: 2 },
-  { name: "clientName", label: "Cliente", type: "text", required: true },
-  { name: "value", label: "Valor (R$)", type: "number" },
+  { name: "clientName", label: "Cliente (Nome/Razão Social)", type: "text", required: true },
+  { name: "clientDocument", label: "CPF/CNPJ", type: "text" },
+  { name: "clientAddress", label: "Endereço", type: "text", colSpan: 2 },
+  { name: "clientPhone", label: "Telefone", type: "text" },
+  { name: "clientEmail", label: "E-mail", type: "text" },
+  { name: "serviceDescription", label: "Serviço/plano contratado", type: "textarea", colSpan: 2 },
+  { name: "value", label: "Valor (R$)", type: "currency" },
+  {
+    name: "paymentType",
+    label: "Forma de pagamento",
+    type: "select",
+    options: [
+      { value: "integral", label: "Valor cheio" },
+      { value: "entrada", label: "Deu entrada (50/50)" },
+    ],
+  },
   {
     name: "status",
     label: "Status",
@@ -47,25 +62,6 @@ const FIELDS: FieldConfig[] = [
   { name: "expiresAt", label: "Expira em", type: "date" },
 ];
 
-function downloadContractCsv(c: Contract) {
-  const rows = [
-    ["Título", c.title],
-    ["Cliente", c.clientName],
-    ["Status", statusLabel[c.status]],
-    ["Valor", String(c.value)],
-    ["Assinado em", c.signedAt ?? ""],
-    ["Expira em", c.expiresAt ?? ""],
-  ];
-  const csv = rows.map((r) => r.map((v) => `"${String(v).replace(/"/g, '""')}"`).join(";")).join("\n");
-  const blob = new Blob(["\uFEFF" + csv], { type: "text/csv;charset=utf-8;" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `${c.title.replace(/\s+/g, "-").toLowerCase()}.csv`;
-  a.click();
-  URL.revokeObjectURL(url);
-}
-
 export default function ContratosPage() {
   const { items: contracts, loading, create, update, remove } = useCollection<Contract>("contratos");
   const [formOpen, setFormOpen] = useState(false);
@@ -74,6 +70,21 @@ export default function ContratosPage() {
 
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (c: Contract) => { setEditing(c); setFormOpen(true); };
+
+  const handleDownload = (c: Contract) => {
+    generateContractPdf({
+      title: c.title,
+      clientName: c.clientName,
+      clientDocument: c.clientDocument,
+      clientAddress: c.clientAddress,
+      clientPhone: c.clientPhone,
+      clientEmail: c.clientEmail,
+      serviceDescription: c.serviceDescription,
+      value: c.value,
+      paymentType: c.paymentType,
+      date: c.signedAt,
+    });
+  };
 
   return (
     <DashboardShell>
@@ -108,7 +119,7 @@ export default function ContratosPage() {
                   <span className="text-sm font-semibold">{formatCurrency(c.value)}</span>
                   {c.signedAt && <span className="text-xs text-muted-foreground">Assinado em {formatDate(c.signedAt)}</span>}
                   <Badge variant={statusVariant[c.status]}>{statusLabel[c.status]}</Badge>
-                  <Button variant="ghost" size="icon" title="Baixar contrato" onClick={() => downloadContractCsv(c)}>
+                  <Button variant="ghost" size="icon" title="Baixar contrato em PDF" onClick={() => handleDownload(c)}>
                     <Download className="h-4 w-4" />
                   </Button>
                   <Button variant="ghost" size="icon" onClick={() => openEdit(c)}>

@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { clients, agendaEvents, transactions, equipments, contracts, users } from "@/lib/db/schema";
+import { clients, agendaEvents, transactions, contracts, users } from "@/lib/db/schema";
 
-type SheetName = "clientes" | "agenda" | "financeiro" | "equipamentos" | "contratos" | "equipe";
+type SheetName = "clientes" | "agenda" | "financeiro" | "contratos" | "equipe";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const VALID_SHEETS: SheetName[] = ["clientes", "agenda", "financeiro", "equipamentos", "contratos", "equipe"];
+const VALID_SHEETS: SheetName[] = ["clientes", "agenda", "financeiro", "contratos", "equipe"];
 
 function isValidSheet(sheet: string): sheet is SheetName {
   return (VALID_SHEETS as string[]).includes(sheet);
@@ -42,9 +42,6 @@ export async function PUT(req: NextRequest, { params }: { params: Promise<{ shee
       case "financeiro":
         [item] = await db.update(transactions).set(parseDates(body, ["date"])).where(eq(transactions.id, id)).returning();
         break;
-      case "equipamentos":
-        [item] = await db.update(equipments).set(body).where(eq(equipments.id, id)).returning();
-        break;
       case "contratos":
         [item] = await db.update(contracts).set(parseDates(body, ["signedAt", "expiresAt"])).where(eq(contracts.id, id)).returning();
         break;
@@ -76,9 +73,6 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
         break;
       case "financeiro":
         deleted = await db.delete(transactions).where(eq(transactions.id, id)).returning();
-        break;
-      case "equipamentos":
-        deleted = await db.delete(equipments).where(eq(equipments.id, id)).returning();
         break;
       case "contratos":
         deleted = await db.delete(contracts).where(eq(contracts.id, id)).returning();

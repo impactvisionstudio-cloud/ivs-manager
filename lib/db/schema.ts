@@ -135,10 +135,19 @@ export const equipmentReservations = pgTable("equipment_reservations", {
   end: timestamp("end").notNull(),
 });
 
+export const contractPaymentTypeEnum = pgEnum("contract_payment_type", ["integral", "entrada"]);
+
 export const contracts = pgTable("contracts", {
   id: uuid("id").defaultRandom().primaryKey(),
   title: text("title").notNull(),
   clientId: uuid("client_id").references(() => clients.id),
+  clientName: text("client_name").notNull().default(""),
+  clientDocument: text("client_document"),
+  clientAddress: text("client_address"),
+  clientPhone: text("client_phone"),
+  clientEmail: text("client_email"),
+  serviceDescription: text("service_description"),
+  paymentType: contractPaymentTypeEnum("payment_type"),
   status: contractStatusEnum("status").notNull().default("rascunho"),
   value: numeric("value", { precision: 12, scale: 2 }).default("0"),
   fileUrl: text("file_url"),

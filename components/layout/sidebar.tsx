@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard, Calendar, Users, Workflow, FolderKanban, UserCog, Wallet,
-  Camera, FileSignature, FolderOpen, ListChecks, Bell, Sparkles, Settings, ChevronsLeft, ChevronsRight,
+  LayoutDashboard, Calendar, Users, Workflow, UserCog, Wallet,
+  FileSignature, ListChecks, Bell, Sparkles, Settings, ChevronsLeft, ChevronsRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/lib/store/ui-store";
@@ -23,12 +23,9 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/agenda", label: "Agenda", icon: Calendar, permission: "agenda.manage" },
   { href: "/clientes", label: "Clientes", icon: Users, permission: "clientes.manage" },
   { href: "/crm", label: "CRM", icon: Workflow, permission: "crm.manage" },
-  { href: "/projetos", label: "Projetos", icon: FolderKanban, permission: "projetos.manage" },
   { href: "/equipe", label: "Equipe", icon: UserCog, permission: "equipe.manage" },
   { href: "/financeiro", label: "Financeiro", icon: Wallet, permission: "financeiro.view" },
-  { href: "/equipamentos", label: "Equipamentos", icon: Camera, permission: "equipamentos.manage" },
   { href: "/contratos", label: "Contratos", icon: FileSignature, permission: "contratos.manage" },
-  { href: "/arquivos", label: "Arquivos", icon: FolderOpen, permission: "arquivos.manage" },
   { href: "/checklist", label: "Checklist", icon: ListChecks },
   { href: "/notificacoes", label: "Notificações", icon: Bell },
   { href: "/ia", label: "IVS AI", icon: Sparkles, permission: "ia.use" },
