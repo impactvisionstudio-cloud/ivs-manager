@@ -151,19 +151,21 @@ export default function ContratosPage() {
 
           const contract = await create(values as Omit<Contract, "id">);
 
-          const planName = detectPlan(contract.serviceDescription);
-          if (planName) {
-            const deliverables = PLAN_CHECKLISTS[planName];
-            await Promise.all(
-              deliverables.map((title, index) =>
-                createChecklistItem({
-                  contractId: contract.id,
-                  title,
-                  done: false,
-                  order: index,
-                } as Omit<ChecklistItem, "id">)
-              )
-            );
+          if (contract) {
+            const planName = detectPlan(contract.serviceDescription);
+            if (planName) {
+              const deliverables = PLAN_CHECKLISTS[planName];
+              await Promise.all(
+                deliverables.map((title, index) =>
+                  createChecklistItem({
+                    contractId: contract.id,
+                    title,
+                    done: false,
+                    order: index,
+                  } as Omit<ChecklistItem, "id">)
+                )
+              );
+            }
           }
 
           return contract;
