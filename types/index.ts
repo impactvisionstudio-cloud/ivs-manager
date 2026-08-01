@@ -153,3 +153,11 @@ export interface NotificationItem {
   createdAt: string;
   type: "info" | "warning" | "success" | "danger";
 }
+
+export interface ChecklistItem {
+  id: string;
+  contractId: string;
+  title: string;
+  done: boolean;
+  order: number;
+}

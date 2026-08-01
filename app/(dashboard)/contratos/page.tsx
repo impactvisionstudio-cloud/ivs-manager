@@ -7,12 +7,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Plus, FileSignature, Download, Pencil, Trash2 } from "lucide-react";
 import { formatCurrency, formatDate } from "@/lib/utils";
-import type { Contract } from "@/types";
+import type { Contract, ChecklistItem } from "@/types";
 import { useCollection } from "@/lib/hooks/use-collection";
 import { EntityFormDialog, type FieldConfig } from "@/components/shared/entity-form-dialog";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { DownloadSheetButton } from "@/components/shared/download-sheet-button";
 import { generateContractPdf } from "@/lib/pdf/contract-template";
+import { detectPlan, PLAN_CHECKLISTS } from "@/lib/plan-checklists";
 
 const statusVariant: Record<Contract["status"], "success" | "secondary" | "warning" | "danger"> = {
   assinado: "success",
@@ -64,6 +65,7 @@ const FIELDS: FieldConfig[] = [
 
 export default function ContratosPage() {
   const { items: contracts, loading, create, update, remove } = useCollection<Contract>("contratos");
+  const { create: createChecklistItem } = useCollection<ChecklistItem>("checklist");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Contract | null>(null);
   const [deleting, setDeleting] = useState<Contract | null>(null);
@@ -146,7 +148,25 @@ export default function ContratosPage() {
           if (editing) {
             return await update(editing.id, values as Partial<Contract>);
           }
-          return await create(values as Omit<Contract, "id">);
+
+          const contract = await create(values as Omit<Contract, "id">);
+
+          const planName = detectPlan(contract.serviceDescription);
+          if (planName) {
+            const deliverables = PLAN_CHECKLISTS[planName];
+            await Promise.all(
+              deliverables.map((title, index) =>
+                createChecklistItem({
+                  contractId: contract.id,
+                  title,
+                  done: false,
+                  order: index,
+                } as Omit<ChecklistItem, "id">)
+              )
+            );
+          }
+
+          return contract;
         }}
       />
 

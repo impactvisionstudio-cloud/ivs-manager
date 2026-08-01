@@ -89,7 +89,7 @@ export const projectMembers = pgTable("project_members", {
 
 export const checklistItems = pgTable("checklist_items", {
   id: uuid("id").defaultRandom().primaryKey(),
-  projectId: uuid("project_id").references(() => projects.id).notNull(),
+  contractId: uuid("contract_id").references(() => contracts.id).notNull(),
   title: text("title").notNull(),
   done: boolean("done").notNull().default(false),
   order: integer("order").notNull().default(0),
@@ -221,6 +221,10 @@ export const aiMessages = pgTable("ai_messages", {
 export const projectsRelations = relations(projects, ({ many, one }) => ({
   client: one(clients, { fields: [projects.clientId], references: [clients.id] }),
   members: many(projectMembers),
+}));
+
+export const contractsRelations = relations(contracts, ({ many, one }) => ({
+  client: one(clients, { fields: [contracts.clientId], references: [clients.id] }),
   checklist: many(checklistItems),
 }));
 

@@ -8,36 +8,37 @@ import { Input } from "@/components/ui/input";
 import { Select } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import { Check, Plus, Trash2 } from "lucide-react";
-import type { Project } from "@/types";
+import type { Contract, ChecklistItem } from "@/types";
 import { useCollection } from "@/lib/hooks/use-collection";
 import { DownloadSheetButton } from "@/components/shared/download-sheet-button";
 
-interface ChecklistItem {
-  id: string;
-  projectId: string;
-  title: string;
-  done: boolean;
-}
-
 export default function ChecklistPage() {
-  const { items: projects } = useCollection<Project>("projetos");
+  const { items: contracts } = useCollection<Contract>("contratos");
   const { items: checklist, loading, create, update, remove } = useCollection<ChecklistItem>("checklist");
-  const [projectId, setProjectId] = useState<string>("");
+  const [contractId, setContractId] = useState<string>("");
   const [newTitle, setNewTitle] = useState("");
 
-  const activeProjectId = projectId || projects[0]?.id || "";
+  const activeContractId = contractId || contracts[0]?.id || "";
   const items = useMemo(
-    () => checklist.filter((i) => i.projectId === activeProjectId),
-    [checklist, activeProjectId]
+    () =>
+      checklist
+        .filter((i) => i.contractId === activeContractId)
+        .sort((a, b) => a.order - b.order),
+    [checklist, activeContractId]
   );
-  const activeProject = projects.find((p) => p.id === activeProjectId);
+  const activeContract = contracts.find((c) => c.id === activeContractId);
   const done = items.filter((i) => i.done).length;
 
   const toggle = (item: ChecklistItem) => update(item.id, { done: !item.done } as Partial<ChecklistItem>);
 
   const addItem = async () => {
-    if (!newTitle.trim() || !activeProjectId) return;
-    await create({ projectId: activeProjectId, title: newTitle.trim(), done: false });
+    if (!newTitle.trim() || !activeContractId) return;
+    await create({
+      contractId: activeContractId,
+      title: newTitle.trim(),
+      done: false,
+      order: items.length,
+    } as Omit<ChecklistItem, "id">);
     setNewTitle("");
   };
 
@@ -46,15 +47,15 @@ export default function ChecklistPage() {
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Checklist</h1>
-          <p className="text-sm text-muted-foreground">Acompanhamento de etapas por projeto</p>
+          <p className="text-sm text-muted-foreground">Acompanhamento de entregáveis por contrato</p>
         </div>
         <DownloadSheetButton />
       </div>
 
       <div className="mb-4 max-w-xl">
-        <Select value={activeProjectId} onChange={(e) => setProjectId(e.target.value)}>
-          {projects.map((p) => (
-            <option key={p.id} value={p.id}>{p.title}</option>
+        <Select value={activeContractId} onChange={(e) => setContractId(e.target.value)}>
+          {contracts.map((c) => (
+            <option key={c.id} value={c.id}>{c.title} — {c.clientName}</option>
           ))}
         </Select>
       </div>
@@ -64,7 +65,7 @@ export default function ChecklistPage() {
       ) : (
         <Card className="max-w-xl">
           <CardHeader>
-            <CardTitle>{activeProject?.title ?? "Selecione um projeto"}</CardTitle>
+            <CardTitle>{activeContract?.title ?? "Selecione um contrato"}</CardTitle>
             <p className="text-xs text-muted-foreground">{done}/{items.length || 0} etapas concluídas</p>
             <div className="mt-1 h-1.5 w-full overflow-hidden rounded-full bg-muted">
               <div

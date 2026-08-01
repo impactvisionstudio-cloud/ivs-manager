@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { clients, agendaEvents, transactions, contracts, users } from "@/lib/db/schema";
+import { clients, agendaEvents, transactions, contracts, users, checklistItems } from "@/lib/db/schema";
 
-type SheetName = "clientes" | "agenda" | "financeiro" | "contratos" | "equipe";
+type SheetName = "clientes" | "agenda" | "financeiro" | "contratos" | "equipe" | "checklist";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const VALID_SHEETS: SheetName[] = ["clientes", "agenda", "financeiro", "contratos", "equipe"];
+const VALID_SHEETS: SheetName[] = ["clientes", "agenda", "financeiro", "contratos", "equipe", "checklist"];
 
 function isValidSheet(sheet: string): sheet is SheetName {
   return (VALID_SHEETS as string[]).includes(sheet);
@@ -46,6 +46,9 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ she
       case "equipe":
         items = await db.select().from(users);
         break;
+      case "checklist":
+        items = await db.select().from(checklistItems);
+        break;
     }
     return NextResponse.json({ items });
   } catch (err) {
@@ -80,6 +83,9 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ she
         break;
       case "equipe":
         [item] = await db.insert(users).values(body).returning();
+        break;
+      case "checklist":
+        [item] = await db.insert(checklistItems).values(body).returning();
         break;
     }
     return NextResponse.json({ item }, { status: 201 });
