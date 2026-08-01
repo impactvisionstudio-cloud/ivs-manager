@@ -46,6 +46,30 @@ export const clients = pgTable("clients", {
   createdBy: uuid("created_by").references(() => users.id),
 });
 
+// ── Diagnóstico comercial ──────────────────────────────────────────────
+// answers: lista de respostas do formulário, uma por pergunta
+//   { questionId, question, answer, points }
+// opportunities: lista gerada a partir das respostas fracas
+//   { title, impact: "Alto" | "Médio" }
+export const diagnostics = pgTable("diagnostics", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyName: text("company_name").notNull(),
+  responsible: text("responsible"),
+  phone: text("phone"),
+  address: text("address"),
+  segment: text("segment"),
+  city: text("city"),
+  marketTime: text("market_time"),
+  consultant: text("consultant"),
+  protocol: text("protocol").notNull(),
+  answers: jsonb("answers").notNull().default([]),
+  opportunities: jsonb("opportunities").notNull().default([]),
+  score: integer("score").notNull().default(0),
+  expiresAt: timestamp("expires_at"),
+  createdBy: uuid("created_by").references(() => users.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const projects = pgTable("projects", {
   id: uuid("id").defaultRandom().primaryKey(),
   title: text("title").notNull(),
