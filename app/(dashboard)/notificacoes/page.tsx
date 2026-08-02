@@ -42,7 +42,7 @@ export default function NotificacoesPage() {
       .map((e) => ({
         id: `agenda-${e.id}`,
         title: `Compromisso amanhã: ${e.title}`,
-        description: `${new Date(e.start).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · ${clientName(e.clientId) ?? "Sem cliente vinculado"}`,
+        description: `${new Date(e.start).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })} · ${e.clientName ?? "Sem cliente vinculado"}`,
         type: "info",
         createdAt: e.start,
       }));
