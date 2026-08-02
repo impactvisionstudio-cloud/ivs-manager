@@ -236,6 +236,20 @@ export const teamNotes = pgTable("team_notes", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ── IVS AI ──────────────────────────────────────────────────────────────
+export const aiInsights = pgTable("ai_insights", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  clientId: uuid("client_id").references(() => clients.id).notNull(),
+  contractId: uuid("contract_id").references(() => contracts.id),
+  niche: text("niche").notNull(),
+  observations: text("observations"),
+  postIdeas: jsonb("post_ideas"),
+  painPoints: jsonb("pain_points"),
+  differentiators: jsonb("differentiators"),
+  visualIdentitySuggestions: jsonb("visual_identity_suggestions"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const projectsRelations = relations(projects, ({ many, one }) => ({
   client: one(clients, { fields: [projects.clientId], references: [clients.id] }),
   members: many(projectMembers),
@@ -257,4 +271,9 @@ export const teamNotesRelations = relations(teamNotes, ({ one }) => ({
   assignee: one(teamMembers, { fields: [teamNotes.assigneeId], references: [teamMembers.id] }),
   client: one(clients, { fields: [teamNotes.clientId], references: [clients.id] }),
   contract: one(contracts, { fields: [teamNotes.contractId], references: [contracts.id] }),
+}));
+
+export const aiInsightsRelations = relations(aiInsights, ({ one }) => ({
+  client: one(clients, { fields: [aiInsights.clientId], references: [clients.id] }),
+  contract: one(contracts, { fields: [aiInsights.contractId], references: [contracts.id] }),
 }));

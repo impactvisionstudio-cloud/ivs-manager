@@ -1,58 +1,156 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Sparkles, Send, FileText, Calendar, MessageSquareText, ListTodo } from "lucide-react";
-import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Sparkles, Loader2, Lightbulb, AlertTriangle, Gem, Palette } from "lucide-react";
 
-interface Message {
+interface Client {
   id: string;
-  role: "user" | "assistant";
-  content: string;
+  name: string;
 }
 
-const SUGGESTIONS = [
-  { icon: FileText, label: "Gerar proposta comercial" },
-  { icon: Calendar, label: "Criar cronograma de produção" },
-  { icon: MessageSquareText, label: "Resumir última reunião" },
-  { icon: ListTodo, label: "Criar tarefas para o projeto" },
+interface Contract {
+  id: string;
+  title: string;
+  clientId: string;
+}
+
+interface PainPoint {
+  pain: string;
+  solution: string;
+}
+
+interface AiInsight {
+  id: string;
+  clientId: string;
+  contractId: string | null;
+  niche: string;
+  observations: string | null;
+  postIdeas: string[] | null;
+  painPoints: PainPoint[] | null;
+  differentiators: string[] | null;
+  visualIdentitySuggestions: string[] | null;
+  createdAt: string;
+}
+
+type OutputKey = "postIdeas" | "painPoints" | "differentiators" | "visualIdentitySuggestions";
+
+const OUTPUT_OPTIONS: { key: OutputKey; label: string; icon: typeof Lightbulb }[] = [
+  { key: "postIdeas", label: "Ideias de post", icon: Lightbulb },
+  { key: "painPoints", label: "Dores do nicho", icon: AlertTriangle },
+  { key: "differentiators", label: "Diferenciais", icon: Gem },
+  { key: "visualIdentitySuggestions", label: "Identidade visual", icon: Palette },
 ];
 
+function extractArray<T = unknown>(payload: unknown): T[] {
+  if (Array.isArray(payload)) return payload as T[];
+  if (payload && typeof payload === "object" && "data" in (payload as Record<string, unknown>)) {
+    const data = (payload as Record<string, unknown>).data;
+    if (Array.isArray(data)) return data as T[];
+  }
+  return [];
+}
+
 export default function IaPage() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content:
-        "Olá! Eu sou a IVS AI. Posso gerar propostas, contratos, cronogramas, roteiros, legendas, resumir reuniões, criar tarefas e responder dúvidas sobre a agência. Como posso ajudar?",
-    },
-  ]);
-  const [input, setInput] = useState("");
+  const [clients, setClients] = useState<Client[]>([]);
+  const [contracts, setContracts] = useState<Contract[]>([]);
+  const [history, setHistory] = useState<AiInsight[]>([]);
+
+  const [clientId, setClientId] = useState("");
+  const [contractId, setContractId] = useState("");
+  const [niche, setNiche] = useState("");
+  const [observations, setObservations] = useState("");
+  const [outputs, setOutputs] = useState<OutputKey[]>(["postIdeas", "painPoints"]);
+
   const [loading, setLoading] = useState(false);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+  const [error, setError] = useState("");
+  const [result, setResult] = useState<AiInsight | null>(null);
 
-  const send = async (text: string) => {
-    if (!text.trim()) return;
-    const userMsg: Message = { id: crypto.randomUUID(), role: "user", content: text };
-    setMessages((prev) => [...prev, userMsg]);
-    setInput("");
-    setLoading(true);
+  useEffect(() => {
+    fetch("/api/data/clientes")
+      .then((r) => r.json())
+      .then((data) => setClients(extractArray<Client>(data)))
+      .catch(() => setClients([]));
 
-    // Integração real com IA via API (/api/ai) deve ser conectada aqui.
-    await new Promise((r) => setTimeout(r, 900));
-    setMessages((prev) => [
-      ...prev,
-      {
-        id: crypto.randomUUID(),
-        role: "assistant",
-        content:
-          "Esta é uma resposta de demonstração. Para respostas reais, conecte a IVS AI a um endpoint de modelo (ex: Claude via API) em /api/ai.",
-      },
-    ]);
-    setLoading(false);
+    fetch("/api/data/contratos")
+      .then((r) => r.json())
+      .then((data) => setContracts(extractArray<Contract>(data)))
+      .catch(() => setContracts([]));
+  }, []);
+
+  useEffect(() => {
+    loadHistory();
+  }, []);
+
+  const loadHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      const res = await fetch("/api/ai-insights");
+      const data = await res.json();
+      setHistory(extractArray<AiInsight>(data));
+    } catch {
+      setHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
   };
+
+  const toggleOutput = (key: OutputKey) => {
+    setOutputs((prev) =>
+      prev.includes(key) ? prev.filter((k) => k !== key) : [...prev, key]
+    );
+  };
+
+  const clientContracts = contracts.filter((c) => c.clientId === clientId);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!clientId || !niche.trim() || outputs.length === 0) return;
+
+    setLoading(true);
+    setError("");
+    setResult(null);
+
+    try {
+      const res = await fetch("/api/ai-insights", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          clientId,
+          contractId: contractId || undefined,
+          niche,
+          observations: observations || undefined,
+          outputs,
+        }),
+      });
+
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Erro ao gerar insights");
+      }
+
+      const data: AiInsight = await res.json();
+      setResult(data);
+      setHistory((prev) => [data, ...prev]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Erro ao gerar insights");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const clientName = (id: string) => clients.find((c) => c.id === id)?.name || "—";
 
   return (
     <DashboardShell>
@@ -62,72 +160,198 @@ export default function IaPage() {
         </div>
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">IVS AI</h1>
-          <p className="text-sm text-muted-foreground">Assistente integrado da agência</p>
+          <p className="text-sm text-muted-foreground">
+            Gere ideias de post, análise de dores, diferenciais e identidade visual por cliente
+          </p>
         </div>
       </div>
 
-      <Card className="flex h-[68vh] flex-col">
-        <CardContent className="scrollbar-thin flex-1 space-y-4 overflow-y-auto p-5">
-          {messages.map((m) => (
-            <div key={m.id} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-              <div
-                className={cn(
-                  "max-w-[80%] rounded-2xl px-4 py-2.5 text-sm leading-relaxed",
-                  m.role === "user"
-                    ? "bg-gradient-primary text-white"
-                    : "border border-border bg-muted/30 text-foreground"
-                )}
-              >
-                {m.content}
+      <Card className="mb-6">
+        <CardContent className="space-y-4 p-5">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Cliente *</label>
+                <Select value={clientId} onValueChange={(v) => { setClientId(v); setContractId(""); }}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o cliente" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clients.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </div>
-          ))}
-          {loading && (
-            <div className="flex justify-start">
-              <div className="flex items-center gap-1 rounded-2xl border border-border bg-muted/30 px-4 py-3">
-                {[0, 1, 2].map((i) => (
-                  <span key={i} className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary-400" style={{ animationDelay: `${i * 150}ms` }} />
-                ))}
-              </div>
-            </div>
-          )}
 
-          {messages.length === 1 && (
-            <div className="grid grid-cols-1 gap-2 pt-2 sm:grid-cols-2">
-              {SUGGESTIONS.map((s) => (
-                <button
-                  key={s.label}
-                  onClick={() => send(s.label)}
-                  className="flex items-center gap-2.5 rounded-xl border border-border bg-muted/20 p-3 text-left text-sm transition-colors hover:border-primary-600/50 hover:bg-accent"
-                >
-                  <s.icon className="h-4 w-4 text-primary-400" />
-                  {s.label}
-                </button>
+              <div>
+                <label className="mb-1.5 block text-sm font-medium">Contrato (opcional)</label>
+                <Select value={contractId} onValueChange={setContractId} disabled={!clientId}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o contrato" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {clientContracts.map((c) => (
+                      <SelectItem key={c.id} value={c.id}>
+                        {c.title}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Nicho *</label>
+              <Input
+                value={niche}
+                onChange={(e) => setNiche(e.target.value)}
+                placeholder="Ex: clínica odontológica, restaurante japonês, academia..."
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">Observações</label>
+              <textarea
+                value={observations}
+                onChange={(e) => setObservations(e.target.value)}
+                placeholder="Contexto adicional sobre o cliente, concorrentes, objetivos..."
+                rows={3}
+                className="w-full rounded-md border border-border bg-transparent p-2.5 text-sm outline-none focus:ring-1 focus:ring-primary-600"
+              />
+            </div>
+
+            <div>
+              <label className="mb-1.5 block text-sm font-medium">O que gerar *</label>
+              <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                {OUTPUT_OPTIONS.map(({ key, label, icon: Icon }) => {
+                  const active = outputs.includes(key);
+                  return (
+                    <button
+                      type="button"
+                      key={key}
+                      onClick={() => toggleOutput(key)}
+                      className={`flex items-center gap-2 rounded-xl border p-3 text-left text-sm transition-colors ${
+                        active
+                          ? "border-primary-600 bg-primary-600/10"
+                          : "border-border bg-muted/20 hover:bg-accent"
+                      }`}
+                    >
+                      <Icon className="h-4 w-4 text-primary-400" />
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {error && <p className="text-sm text-destructive">{error}</p>}
+
+            <Button
+              type="submit"
+              disabled={loading || !clientId || !niche.trim() || outputs.length === 0}
+              className="w-full sm:w-auto"
+            >
+              {loading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Gerando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-4 w-4" /> Gerar com IA
+                </>
+              )}
+            </Button>
+          </form>
+        </CardContent>
+      </Card>
+
+      {result && (
+        <Card className="mb-6 border-primary-600/40">
+          <CardContent className="space-y-4 p-5">
+            <h2 className="text-sm font-semibold text-primary-400">
+              Resultado — {clientName(result.clientId)}
+            </h2>
+            <InsightBody insight={result} />
+          </CardContent>
+        </Card>
+      )}
+
+      <Card>
+        <CardContent className="space-y-4 p-5">
+          <h2 className="text-sm font-semibold">Histórico</h2>
+          {loadingHistory ? (
+            <p className="text-sm text-muted-foreground">Carregando...</p>
+          ) : history.length === 0 ? (
+            <p className="text-sm text-muted-foreground">Nenhum resultado gerado ainda.</p>
+          ) : (
+            <div className="space-y-3">
+              {history.map((item) => (
+                <details key={item.id} className="rounded-xl border border-border p-3">
+                  <summary className="cursor-pointer text-sm font-medium">
+                    {clientName(item.clientId)} — {item.niche} —{" "}
+                    {new Date(item.createdAt).toLocaleDateString("pt-BR")}
+                  </summary>
+                  <div className="mt-3">
+                    <InsightBody insight={item} />
+                  </div>
+                </details>
               ))}
             </div>
           )}
         </CardContent>
-
-        <div className="border-t border-border p-4">
-          <form
-            onSubmit={(e) => {
-              e.preventDefault();
-              send(input);
-            }}
-            className="flex items-center gap-2"
-          >
-            <Input
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              placeholder="Pergunte algo à IVS AI..."
-              className="flex-1"
-            />
-            <Button type="submit" size="icon" disabled={loading || !input.trim()}>
-              <Send className="h-4 w-4" />
-            </Button>
-          </form>
-        </div>
       </Card>
     </DashboardShell>
+  );
+}
+
+function InsightBody({ insight }: { insight: AiInsight }) {
+  return (
+    <div className="space-y-4 text-sm">
+      {insight.postIdeas && (
+        <div>
+          <p className="mb-1 font-medium text-primary-400">Ideias de post</p>
+          <ul className="list-inside list-disc space-y-1">
+            {insight.postIdeas.map((idea, i) => (
+              <li key={i}>{idea}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {insight.painPoints && (
+        <div>
+          <p className="mb-1 font-medium text-primary-400">Dores do nicho</p>
+          <ul className="list-inside list-disc space-y-1">
+            {insight.painPoints.map((p, i) => (
+              <li key={i}>
+                <span className="font-medium">{p.pain}:</span> {p.solution}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {insight.differentiators && (
+        <div>
+          <p className="mb-1 font-medium text-primary-400">Diferenciais</p>
+          <ul className="list-inside list-disc space-y-1">
+            {insight.differentiators.map((d, i) => (
+              <li key={i}>{d}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {insight.visualIdentitySuggestions && (
+        <div>
+          <p className="mb-1 font-medium text-primary-400">Identidade visual</p>
+          <ul className="list-inside list-disc space-y-1">
+            {insight.visualIdentitySuggestions.map((v, i) => (
+              <li key={i}>{v}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
