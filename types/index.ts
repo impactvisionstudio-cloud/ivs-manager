@@ -154,15 +154,6 @@ export interface NotificationItem {
   type: "info" | "warning" | "success" | "danger";
 }
 
-export interface NotificationItem {
-  id: string;
-  title: string;
-  description: string;
-  read: boolean;
-  createdAt: string;
-  type: "info" | "warning" | "success" | "danger";
-}
-
 export interface ChecklistItem {
   id: string;
   contractId: string;
@@ -172,3 +163,22 @@ export interface ChecklistItem {
 }
 
 export interface TeamMember {
+  id: string;
+  name: string;
+  role?: string;
+  avatarUrl?: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export type TeamNoteStatus = "pendente" | "em_andamento" | "concluido";
+
+export interface TeamNote {
+  id: string;
+  content: string;
+  assigneeId?: string;
+  status: TeamNoteStatus;
+  clientId?: string;
+  contractId?: string;
+  createdAt: string;
+}
