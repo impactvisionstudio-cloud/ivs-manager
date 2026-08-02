@@ -106,6 +106,7 @@ export interface Transaction {
   amount: number;
   date: string;
   status: "pago" | "pendente" | "atrasado";
+  clientName?: string;
   clientId?: string;
   contractId?: string;
 }
