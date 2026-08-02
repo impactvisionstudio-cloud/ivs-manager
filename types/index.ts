@@ -154,10 +154,23 @@ export interface NotificationItem {
   type: "info" | "warning" | "success" | "danger";
 }
 
-export interface ChecklistItem {
+export interface TeamMember {
   id: string;
-  contractId: string;
-  title: string;
-  done: boolean;
-  order: number;
+  name: string;
+  role?: string;
+  avatarUrl?: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export type TeamNoteStatus = "pendente" | "em_andamento" | "concluido";
+
+export interface TeamNote {
+  id: string;
+  content: string;
+  assigneeId?: string;
+  status: TeamNoteStatus;
+  clientId?: string;
+  contractId?: string;
+  createdAt: string;
 }
