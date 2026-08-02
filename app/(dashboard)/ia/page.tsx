@@ -5,13 +5,7 @@ import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
+import { Select } from "@/components/ui/select";
 import { Sparkles, Loader2, Lightbulb, AlertTriangle, Gem, Palette } from "lucide-react";
 
 interface Client {
@@ -172,33 +166,35 @@ export default function IaPage() {
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Cliente *</label>
-                <Select value={clientId} onValueChange={(v) => { setClientId(v); setContractId(""); }}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o cliente" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clients.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Select
+                  value={clientId}
+                  onChange={(e) => {
+                    setClientId(e.target.value);
+                    setContractId("");
+                  }}
+                >
+                  <option value="">Selecione o cliente</option>
+                  {clients.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
                 </Select>
               </div>
 
               <div>
                 <label className="mb-1.5 block text-sm font-medium">Contrato (opcional)</label>
-                <Select value={contractId} onValueChange={setContractId} disabled={!clientId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o contrato" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {clientContracts.map((c) => (
-                      <SelectItem key={c.id} value={c.id}>
-                        {c.title}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
+                <Select
+                  value={contractId}
+                  onChange={(e) => setContractId(e.target.value)}
+                  disabled={!clientId}
+                >
+                  <option value="">Selecione o contrato</option>
+                  {clientContracts.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.title}
+                    </option>
+                  ))}
                 </Select>
               </div>
             </div>
