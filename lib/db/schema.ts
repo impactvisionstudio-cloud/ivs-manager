@@ -203,7 +203,7 @@ export const auditLogs = pgTable("audit_logs", {
 
 export const aiConversations = pgTable("ai_conversations", {
   id: uuid("id").defaultRandom().primaryKey(),
-  userId: uuid("user_id").references(() => users.id).notNull(),
+  userId: uuid("user_id").references(() => users.id),
   title: text("title").notNull().default("Nova conversa"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -239,7 +239,7 @@ export const teamNotes = pgTable("team_notes", {
 // ── IVS AI ──────────────────────────────────────────────────────────────
 export const aiInsights = pgTable("ai_insights", {
   id: uuid("id").defaultRandom().primaryKey(),
-  clientId: uuid("client_id").references(() => clients.id).notNull(),
+  clientId: uuid("client_id").references(() => clients.id),
   contractId: uuid("contract_id").references(() => contracts.id),
   niche: text("niche").notNull(),
   observations: text("observations"),
