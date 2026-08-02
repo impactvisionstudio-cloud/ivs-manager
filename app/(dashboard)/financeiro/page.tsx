@@ -1,24 +1,31 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Plus, ArrowUpRight, ArrowDownRight, Pencil, Trash2 } from "lucide-react";
-import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { revenueByMonth } from "@/lib/mock/data";
-import { cn, formatCurrency, formatDate } from "@/lib/utils";
-import type { Transaction } from "@/types";
+import { Badge } from "@/components/ui/badge";
+import { Plus, TrendingUp, TrendingDown, Pencil, Trash2 } from "lucide-react";
+import { formatCurrency, formatDate } from "@/lib/utils";
+import type { Transaction, Client, Contract } from "@/types";
 import { useCollection } from "@/lib/hooks/use-collection";
 import { EntityFormDialog, type FieldConfig } from "@/components/shared/entity-form-dialog";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { DownloadSheetButton } from "@/components/shared/download-sheet-button";
 
+const SOCIO_1 = "Daniel Gomes";
+const SOCIO_2 = "Eduardo Lobato";
+
 const statusVariant: Record<Transaction["status"], "success" | "warning" | "danger"> = {
   pago: "success",
   pendente: "warning",
   atrasado: "danger",
+};
+
+const statusLabel: Record<Transaction["status"], string> = {
+  pago: "Pago",
+  pendente: "Pendente",
+  atrasado: "Atrasado",
 };
 
 const FIELDS: FieldConfig[] = [
@@ -34,8 +41,7 @@ const FIELDS: FieldConfig[] = [
     ],
   },
   { name: "category", label: "Categoria", type: "text" },
-  { name: "amount", label: "Valor (R$)", type: "number" },
-  { name: "date", label: "Data", type: "date" },
+  { name: "amount", label: "Valor (R$)", type: "currency", required: true },
   {
     name: "status",
     label: "Status",
@@ -47,27 +53,45 @@ const FIELDS: FieldConfig[] = [
       { value: "atrasado", label: "Atrasado" },
     ],
   },
-  { name: "clientName", label: "Cliente (opcional)", type: "text" },
+  { name: "date", label: "Data", type: "date" },
 ];
+
+function calcSplit(amount: number) {
+  const dizimo = amount * 0.1;
+  const ivs = amount * 0.2;
+  const socios = amount * 0.7;
+  const cadaSocio = socios / 2;
+  return { dizimo, ivs, cadaSocio };
+}
 
 export default function FinanceiroPage() {
   const { items: transactions, loading, create, update, remove } = useCollection<Transaction>("financeiro");
+  const { items: clients } = useCollection<Client>("clientes");
+  const { items: contracts } = useCollection<Contract>("contratos");
   const [formOpen, setFormOpen] = useState(false);
   const [editing, setEditing] = useState<Transaction | null>(null);
   const [deleting, setDeleting] = useState<Transaction | null>(null);
 
-  const receitas = transactions.filter((t) => t.type === "receita").reduce((s, t) => s + t.amount, 0);
-  const despesas = transactions.filter((t) => t.type === "despesa").reduce((s, t) => s + t.amount, 0);
-
   const openCreate = () => { setEditing(null); setFormOpen(true); };
   const openEdit = (t: Transaction) => { setEditing(t); setFormOpen(true); };
+
+  const totals = useMemo(() => {
+    const receitas = transactions.filter((t) => t.type === "receita" && t.status === "pago");
+    const totalReceitas = receitas.reduce((sum, t) => sum + Number(t.amount), 0);
+    const split = calcSplit(totalReceitas);
+    const pendentes = transactions.filter((t) => t.status !== "pago").reduce((sum, t) => sum + Number(t.amount), 0);
+    return { totalReceitas, split, pendentes };
+  }, [transactions]);
+
+  const clientName = (id?: string) => clients.find((c) => c.id === id)?.name;
+  const contractTitle = (id?: string) => contracts.find((c) => c.id === id)?.title;
 
   return (
     <DashboardShell>
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
           <h1 className="text-2xl font-semibold tracking-tight">Financeiro</h1>
-          <p className="text-sm text-muted-foreground">Controle de receitas, despesas e fluxo de caixa</p>
+          <p className="text-sm text-muted-foreground">{transactions.length} lançamentos</p>
         </div>
         <div className="flex gap-2">
           <DownloadSheetButton />
@@ -75,94 +99,87 @@ export default function FinanceiroPage() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+      {/* Resumo da divisão automática */}
+      <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card>
-          <CardContent className="p-5">
-            <p className="text-xs text-muted-foreground">Receitas (mês)</p>
-            <p className="mt-1.5 flex items-center gap-1.5 text-2xl font-semibold text-success">
-              <ArrowUpRight className="h-5 w-5" /> {formatCurrency(receitas)}
-            </p>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Recebido (pago)</p>
+            <p className="text-lg font-semibold text-success">{formatCurrency(totals.totalReceitas)}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-5">
-            <p className="text-xs text-muted-foreground">Despesas (mês)</p>
-            <p className="mt-1.5 flex items-center gap-1.5 text-2xl font-semibold text-danger">
-              <ArrowDownRight className="h-5 w-5" /> {formatCurrency(despesas)}
-            </p>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Dízimo (10%)</p>
+            <p className="text-lg font-semibold">{formatCurrency(totals.split.dizimo)}</p>
           </CardContent>
         </Card>
         <Card>
-          <CardContent className="p-5">
-            <p className="text-xs text-muted-foreground">Saldo</p>
-            <p className="mt-1.5 text-2xl font-semibold text-gradient">{formatCurrency(receitas - despesas)}</p>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">IVS (20%)</p>
+            <p className="text-lg font-semibold">{formatCurrency(totals.split.ivs)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">Pendente</p>
+            <p className="text-lg font-semibold text-warning">{formatCurrency(totals.pendentes)}</p>
           </CardContent>
         </Card>
       </div>
 
-      <Card className="mt-4">
-        <CardHeader><CardTitle>Fluxo de caixa</CardTitle></CardHeader>
-        <CardContent className="h-72 pt-0">
-          <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={revenueByMonth}>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(240 5% 18%)" vertical={false} />
-              <XAxis dataKey="month" stroke="hsl(240 5% 64%)" fontSize={12} tickLine={false} axisLine={false} />
-              <YAxis stroke="hsl(240 5% 64%)" fontSize={12} tickLine={false} axisLine={false} tickFormatter={(v) => `${v / 1000}k`} />
-              <Tooltip contentStyle={{ background: "hsl(240 6% 8%)", border: "1px solid hsl(240 5% 18%)", borderRadius: 12 }} formatter={(v: number) => formatCurrency(v)} />
-              <Bar dataKey="receita" fill="#7C3AED" radius={[6, 6, 0, 0]} />
-              <Bar dataKey="despesa" fill="#ef4444" radius={[6, 6, 0, 0]} />
-            </BarChart>
-          </ResponsiveContainer>
-        </CardContent>
-      </Card>
+      <div className="mb-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">{SOCIO_1} (35%)</p>
+            <p className="text-lg font-semibold text-primary-400">{formatCurrency(totals.split.cadaSocio)}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-xs text-muted-foreground">{SOCIO_2} (35%)</p>
+            <p className="text-lg font-semibold text-primary-400">{formatCurrency(totals.split.cadaSocio)}</p>
+          </CardContent>
+        </Card>
+      </div>
 
-      <Card className="mt-4">
-        <CardHeader><CardTitle>Lançamentos recentes</CardTitle></CardHeader>
-        <CardContent className="pt-0">
-          {loading ? (
-            <p className="text-sm text-muted-foreground">Carregando...</p>
-          ) : (
-          <div className="scrollbar-thin overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border text-left text-xs text-muted-foreground">
-                  <th className="pb-2 font-medium">Descrição</th>
-                  <th className="pb-2 font-medium">Categoria</th>
-                  <th className="pb-2 font-medium">Data</th>
-                  <th className="pb-2 font-medium">Status</th>
-                  <th className="pb-2 text-right font-medium">Valor</th>
-                  <th className="pb-2 text-right font-medium">Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {transactions.map((t) => (
-                  <tr key={t.id} className="border-b border-border/50 last:border-0">
-                    <td className="py-3 font-medium">{t.description}</td>
-                    <td className="py-3 text-muted-foreground">{t.category}</td>
-                    <td className="py-3 text-muted-foreground">{formatDate(t.date)}</td>
-                    <td className="py-3"><Badge variant={statusVariant[t.status]} className="capitalize">{t.status}</Badge></td>
-                    <td className={cn("py-3 text-right font-semibold", t.type === "receita" ? "text-success" : "text-danger")}>
-                      {t.type === "receita" ? "+" : "-"} {formatCurrency(t.amount)}
-                    </td>
-                    <td className="py-3 text-right">
-                      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(t)}>
-                        <Pencil className="h-3.5 w-3.5" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-danger" onClick={() => setDeleting(t)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-                {transactions.length === 0 && (
-                  <tr><td colSpan={6} className="py-3 text-muted-foreground">Nenhum lançamento cadastrado.</td></tr>
-                )}
-              </tbody>
-            </table>
-          </div>
-          )}
-        </CardContent>
-      </Card>
+      {loading ? (
+        <p className="text-sm text-muted-foreground">Carregando...</p>
+      ) : (
+        <div className="space-y-3">
+          {transactions.map((t) => (
+            <Card key={t.id} className="transition-colors hover:border-primary-600/40">
+              <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${t.type === "receita" ? "bg-success/15 text-success" : "bg-danger/15 text-danger"}`}>
+                    {t.type === "receita" ? <TrendingUp className="h-4.5 w-4.5" /> : <TrendingDown className="h-4.5 w-4.5" />}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium">{t.description}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {clientName(t.clientId) ?? t.category ?? "—"}
+                      {contractTitle(t.contractId) && ` · ${contractTitle(t.contractId)}`}
+                      {" · "}{formatDate(t.date)}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className={`text-sm font-semibold ${t.type === "receita" ? "text-success" : "text-danger"}`}>
+                    {t.type === "receita" ? "+" : "-"}{formatCurrency(Number(t.amount))}
+                  </span>
+                  <Badge variant={statusVariant[t.status]}>{statusLabel[t.status]}</Badge>
+                  <Button variant="ghost" size="icon" onClick={() => openEdit(t)}>
+                    <Pencil className="h-4 w-4" />
+                  </Button>
+                  <Button variant="ghost" size="icon" className="text-danger" onClick={() => setDeleting(t)}>
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+          {transactions.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lançamento cadastrado.</p>}
+        </div>
+      )}
 
       <EntityFormDialog
         open={formOpen}

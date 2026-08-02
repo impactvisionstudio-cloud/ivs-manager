@@ -112,6 +112,7 @@ export const transactions = pgTable("transactions", {
   status: transactionStatusEnum("status").notNull().default("pendente"),
   clientId: uuid("client_id").references(() => clients.id),
   projectId: uuid("project_id").references(() => projects.id),
+  contractId: uuid("contract_id").references(() => contracts.id),
 });
 
 export const equipments = pgTable("equipments", {
