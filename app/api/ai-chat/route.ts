@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { aiConversations, aiMessages, aiInsights } from "@/lib/db/schema";
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!);
-const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
 
 const SYSTEM_PROMPT = `
 Você é a IVS AI, assistente de estratégia de marketing da Impact Vision Studio (produtora audiovisual e agência de marketing).
