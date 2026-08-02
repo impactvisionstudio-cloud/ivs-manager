@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { clients, agendaEvents, transactions, contracts, users, checklistItems } from "@/lib/db/schema";
+import { clients, agendaEvents, transactions, contracts, checklistItems, teamMembers, teamNotes } from "@/lib/db/schema";
 
-type SheetName = "clientes" | "agenda" | "financeiro" | "contratos" | "equipe" | "checklist";
+type SheetName = "clientes" | "agenda" | "financeiro" | "contratos" | "checklist" | "membros" | "recados";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const VALID_SHEETS: SheetName[] = ["clientes", "agenda", "financeiro", "contratos", "equipe", "checklist"];
+const VALID_SHEETS: SheetName[] = ["clientes", "agenda", "financeiro", "contratos", "checklist", "membros", "recados"];
 
 function isValidSheet(sheet: string): sheet is SheetName {
   return (VALID_SHEETS as string[]).includes(sheet);
@@ -43,11 +43,14 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ she
       case "contratos":
         items = await db.select().from(contracts);
         break;
-      case "equipe":
-        items = await db.select().from(users);
-        break;
       case "checklist":
         items = await db.select().from(checklistItems);
+        break;
+      case "membros":
+        items = await db.select().from(teamMembers);
+        break;
+      case "recados":
+        items = await db.select().from(teamNotes);
         break;
     }
     return NextResponse.json({ items });
@@ -81,11 +84,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ she
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         [item] = await db.insert(contracts).values(parseDates(body, ["signedAt", "expiresAt"]) as any).returning();
         break;
-      case "equipe":
-        [item] = await db.insert(users).values(body).returning();
-        break;
       case "checklist":
         [item] = await db.insert(checklistItems).values(body).returning();
+        break;
+      case "membros":
+        [item] = await db.insert(teamMembers).values(body).returning();
+        break;
+      case "recados":
+        [item] = await db.insert(teamNotes).values(body).returning();
         break;
     }
     return NextResponse.json({ item }, { status: 201 });

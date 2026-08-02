@@ -21,6 +21,7 @@ export const equipmentStatusEnum = pgEnum("equipment_status", ["disponivel", "em
 export const contractStatusEnum = pgEnum("contract_status", ["rascunho", "enviado", "assinado", "expirado"]);
 export const clientStatusEnum = pgEnum("client_status", ["ativo", "inativo", "prospect"]);
 export const eventTypeEnum = pgEnum("event_type", ["reuniao", "gravacao", "entrega", "interno"]);
+export const teamNoteStatusEnum = pgEnum("team_note_status", ["pendente", "em_andamento", "concluido"]);
 
 export const users = pgTable("users", {
   id: uuid("id").defaultRandom().primaryKey(),
@@ -47,10 +48,6 @@ export const clients = pgTable("clients", {
 });
 
 // ── Diagnóstico comercial ──────────────────────────────────────────────
-// answers: lista de respostas do formulário, uma por pergunta
-//   { questionId, question, answer, points }
-// opportunities: lista gerada a partir das respostas fracas
-//   { title, impact: "Alto" | "Médio" }
 export const diagnostics = pgTable("diagnostics", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyName: text("company_name").notNull(),
@@ -218,6 +215,26 @@ export const aiMessages = pgTable("ai_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
+// ── Equipe ──────────────────────────────────────────────────────────────
+export const teamMembers = pgTable("team_members", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  role: text("role"),
+  avatarUrl: text("avatar_url"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const teamNotes = pgTable("team_notes", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  content: text("content").notNull(),
+  assigneeId: uuid("assignee_id").references(() => teamMembers.id),
+  status: teamNoteStatusEnum("status").notNull().default("pendente"),
+  clientId: uuid("client_id").references(() => clients.id),
+  contractId: uuid("contract_id").references(() => contracts.id),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
 export const projectsRelations = relations(projects, ({ many, one }) => ({
   client: one(clients, { fields: [projects.clientId], references: [clients.id] }),
   members: many(projectMembers),
@@ -233,4 +250,10 @@ export const clientsRelations = relations(clients, ({ many }) => ({
   deals: many(crmDeals),
   transactions: many(transactions),
   contracts: many(contracts),
+}));
+
+export const teamNotesRelations = relations(teamNotes, ({ one }) => ({
+  assignee: one(teamMembers, { fields: [teamNotes.assigneeId], references: [teamMembers.id] }),
+  client: one(clients, { fields: [teamNotes.clientId], references: [clients.id] }),
+  contract: one(contracts, { fields: [teamNotes.contractId], references: [contracts.id] }),
 }));
