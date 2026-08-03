@@ -56,10 +56,11 @@ const FIELDS: FieldConfig[] = [
   { name: "date", label: "Data", type: "date" },
 ];
 
-function calcSplit(amount: number) {
-  const dizimo = amount * 0.1;
-  const ivs = amount * 0.2;
-  const socios = amount * 0.7;
+function calcSplit(receitas: number, despesasPagas: number) {
+  const dizimo = receitas * 0.1;
+  const ivsBruto = receitas * 0.2;
+  const ivs = ivsBruto - despesasPagas;
+  const socios = receitas * 0.7;
   const cadaSocio = socios / 2;
   return { dizimo, ivs, cadaSocio };
 }
@@ -78,9 +79,12 @@ export default function FinanceiroPage() {
   const totals = useMemo(() => {
     const receitas = transactions.filter((t) => t.type === "receita" && t.status === "pago");
     const totalReceitas = receitas.reduce((sum, t) => sum + Number(t.amount), 0);
-    const split = calcSplit(totalReceitas);
+    const despesasPagas = transactions
+      .filter((t) => t.type === "despesa" && t.status === "pago")
+      .reduce((sum, t) => sum + Number(t.amount), 0);
+    const split = calcSplit(totalReceitas, despesasPagas);
     const pendentes = transactions.filter((t) => t.status !== "pago").reduce((sum, t) => sum + Number(t.amount), 0);
-    return { totalReceitas, split, pendentes };
+    return { totalReceitas, despesasPagas, split, pendentes };
   }, [transactions]);
 
   const clientName = (id?: string) => clients.find((c) => c.id === id)?.name;
@@ -115,8 +119,10 @@ export default function FinanceiroPage() {
         </Card>
         <Card>
           <CardContent className="p-4">
-            <p className="text-xs text-muted-foreground">IVS (20%)</p>
-            <p className="text-lg font-semibold">{formatCurrency(totals.split.ivs)}</p>
+            <p className="text-xs text-muted-foreground">IVS (20% - despesas)</p>
+            <p className={`text-lg font-semibold ${totals.split.ivs < 0 ? "text-danger" : ""}`}>
+              {formatCurrency(totals.split.ivs)}
+            </p>
           </CardContent>
         </Card>
         <Card>
