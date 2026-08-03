@@ -12,7 +12,6 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { loginSchema, type LoginInput } from "@/lib/validators/auth";
 import { useAuthStore } from "@/lib/store/auth-store";
-import { mockUsers } from "@/lib/mock/data";
 import { toast } from "sonner";
 
 export default function LoginPage() {
@@ -95,25 +94,6 @@ export default function LoginPage() {
               Entrar
             </Button>
           </form>
-
-          <div className="mt-6 rounded-lg border border-border/60 bg-muted/30 p-3">
-            <p className="mb-1.5 text-xs font-medium text-muted-foreground">Contas de demonstração (qualquer senha):</p>
-            <div className="flex flex-wrap gap-1.5">
-              {mockUsers.slice(0, 4).map((u) => (
-                <button
-                  key={u.id}
-                  type="button"
-                  onClick={() => {
-                    (document.getElementById("email") as HTMLInputElement).value = u.email;
-                    (document.getElementById("password") as HTMLInputElement).value = "123456";
-                  }}
-                  className="rounded-md border border-border bg-card px-2 py-1 text-[11px] text-muted-foreground transition-colors hover:border-primary-600 hover:text-foreground"
-                >
-                  {u.email}
-                </button>
-              ))}
-            </div>
-          </div>
         </div>
       </motion.div>
     </div>

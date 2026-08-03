@@ -1,10 +1,9 @@
 "use client";
-
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { Permission, Role, User } from "@/types";
 import { ROLE_PERMISSIONS } from "@/types";
-import { mockUsers } from "@/lib/mock/data";
+import { createClient } from "@/lib/supabase/client";
 
 interface AuthState {
   user: User | null;
@@ -19,17 +18,34 @@ export const useAuthStore = create<AuthState>()(
     (set, get) => ({
       user: null,
       isAuthenticated: false,
-      login: async (email: string, _password: string) => {
-        // Autenticação mockada - integrar com Supabase Auth quando configurado.
-        await new Promise((r) => setTimeout(r, 500));
-        const found = mockUsers.find((u) => u.email.toLowerCase() === email.toLowerCase());
-        if (!found) {
+      login: async (email: string, password: string) => {
+        const supabase = createClient();
+        const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+
+        if (error || !data.user) {
           return { success: false, error: "E-mail ou senha inválidos." };
         }
-        set({ user: found, isAuthenticated: true });
+
+        const profileRes = await fetch("/api/auth/profile", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ authId: data.user.id }),
+        });
+
+        if (!profileRes.ok) {
+          await supabase.auth.signOut();
+          return { success: false, error: "Usuário autenticado, mas sem perfil cadastrado." };
+        }
+
+        const profile: User = await profileRes.json();
+        set({ user: profile, isAuthenticated: true });
         return { success: true };
       },
-      logout: () => set({ user: null, isAuthenticated: false }),
+      logout: () => {
+        const supabase = createClient();
+        supabase.auth.signOut();
+        set({ user: null, isAuthenticated: false });
+      },
       can: (permission: Permission) => {
         const role = get().user?.role as Role | undefined;
         if (!role) return false;
