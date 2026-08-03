@@ -72,10 +72,10 @@ export async function POST(req: NextRequest) {
 
     // Salva a mensagem do usuário
     await db.insert(aiMessages).values({
-        conversationId: convoId,
-        role: "assistant",
-        content: JSON.stringify(parsed),
-      });
+      conversationId: convoId,
+      role: "user",
+      content: message,
+    });
 
     // Busca histórico completo da conversa
     const history = await db
@@ -118,7 +118,7 @@ export async function POST(req: NextRequest) {
       await db.insert(aiMessages).values({
         conversationId: convoId,
         role: "assistant",
-        content: "Resultado gerado com sucesso.",
+        content: JSON.stringify(parsed),
       });
 
       return NextResponse.json({
