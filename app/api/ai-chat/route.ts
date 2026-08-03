@@ -72,10 +72,10 @@ export async function POST(req: NextRequest) {
 
     // Salva a mensagem do usuário
     await db.insert(aiMessages).values({
-      conversationId: convoId,
-      role: "user",
-      content: message,
-    });
+        conversationId: convoId,
+        role: "assistant",
+        content: JSON.stringify(parsed),
+      });
 
     // Busca histórico completo da conversa
     const history = await db
