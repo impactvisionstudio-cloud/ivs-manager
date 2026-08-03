@@ -1,3 +1,8 @@
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+
+export type TitleSize = "sm" | "md" | "lg" | "xl";
+
 interface DashboardMessageState {
   purposePhrase: string;
   monthMessage: string;
@@ -6,6 +11,7 @@ interface DashboardMessageState {
     msgs: Partial<Omit<DashboardMessageState, "setMessages">>
   ) => void;
 }
+
 export const useDashboardMessageStore = create<DashboardMessageState>()(
   persist(
     (set) => ({
