@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { Bell, Search, LogOut, Settings, User as UserIcon, Download } from "lucide-react";
+import { Bell, Search, LogOut, Settings, User as UserIcon, Download, Menu } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
@@ -17,7 +17,7 @@ import Link from "next/link";
 
 export function Topbar() {
   const { user, logout } = useAuthStore();
-  const { sidebarCollapsed } = useUIStore();
+  const { sidebarCollapsed, mobileNavOpen, setMobileNavOpen } = useUIStore();
   const router = useRouter();
   const unread = mockNotifications.filter((n) => !n.read).length;
 
@@ -31,6 +31,15 @@ export function Topbar() {
       className="fixed inset-x-0 top-0 z-30 flex h-16 items-center gap-4 border-b border-border bg-background/80 px-4 backdrop-blur-xl transition-all duration-300 md:pl-[calc(var(--sidebar-w)+1rem)]"
       style={{ ["--sidebar-w" as string]: sidebarCollapsed ? "76px" : "256px" }}
     >
+      <button
+        type="button"
+        onClick={() => setMobileNavOpen(!mobileNavOpen)}
+        className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-accent hover:text-foreground md:hidden"
+        aria-label="Abrir menu"
+      >
+        <Menu className="h-5 w-5" />
+      </button>
+
       <div className="relative hidden max-w-sm flex-1 md:block">
         <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
         <Input placeholder="Buscar clientes, contratos..." className="pl-9" />
