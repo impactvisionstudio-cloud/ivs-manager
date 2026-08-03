@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Pencil, Check, X } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuthStore } from "@/lib/store/auth-store";
 import { cn } from "@/lib/utils";
 import { useDashboardMessageStore, type TitleSize } from "@/lib/store/dashboard-message-store";
+import { getHourlyVerse } from "@/lib/data/bible-verses";
 
 const currentMonthName = new Intl.DateTimeFormat("pt-BR", { month: "long" }).format(new Date());
 
@@ -17,17 +18,42 @@ const titleSizeClasses: Record<TitleSize, string> = {
   xl: "text-5xl sm:text-6xl",
 };
 
+function useHourlyVerse() {
+  const [verse, setVerse] = useState(() => getHourlyVerse());
+
+  useEffect(() => {
+    const msUntilNextHour =
+      3600000 - (Date.now() % 3600000);
+
+    const timeout = setTimeout(() => {
+      setVerse(getHourlyVerse());
+    }, msUntilNextHour + 1000);
+
+    const interval = setInterval(() => {
+      setVerse(getHourlyVerse());
+    }, 3600000);
+
+    return () => {
+      clearTimeout(timeout);
+      clearInterval(interval);
+    };
+  }, []);
+
+  return verse;
+}
+
 function DashboardHero() {
   const user = useAuthStore((s) => s.user);
-  const { verseText, verseRef, purposePhrase, monthMessage, titleSize, setMessages } = useDashboardMessageStore();
+  const { purposePhrase, monthMessage, titleSize, setMessages } = useDashboardMessageStore();
+  const verse = useHourlyVerse();
 
   const [isEditing, setIsEditing] = useState(false);
-  const [draft, setDraft] = useState({ verseText, verseRef, purposePhrase, monthMessage, titleSize });
+  const [draft, setDraft] = useState({ purposePhrase, monthMessage, titleSize });
 
   const firstName = user?.name?.split(" ")[0] ?? "";
 
   function startEditing() {
-    setDraft({ verseText, verseRef, purposePhrase, monthMessage, titleSize });
+    setDraft({ purposePhrase, monthMessage, titleSize });
     setIsEditing(true);
   }
 
@@ -63,8 +89,8 @@ function DashboardHero() {
         {!isEditing ? (
           <>
             <p className="mt-6 text-base italic leading-relaxed text-white/85 sm:text-lg">
-              &ldquo;{verseText}&rdquo;{" "}
-              <span className="not-italic text-white/50">{verseRef}</span>
+              &ldquo;{verse.text}&rdquo;{" "}
+              <span className="not-italic text-white/50">{verse.ref}</span>
             </p>
             <p className="mt-4 text-xs font-medium text-white/70 sm:text-sm">
               {purposePhrase}
@@ -89,23 +115,6 @@ function DashboardHero() {
               </select>
             </label>
             <label className="flex flex-col gap-1 text-xs text-white/60">
-              Versículo
-              <textarea
-                value={draft.verseText}
-                onChange={(e) => setDraft((d) => ({ ...d, verseText: e.target.value }))}
-                rows={2}
-                className="rounded-lg border border-white/20 bg-white/5 p-2 text-sm text-white outline-none focus:border-white/40"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-white/60">
-              Referência
-              <input
-                value={draft.verseRef}
-                onChange={(e) => setDraft((d) => ({ ...d, verseRef: e.target.value }))}
-                className="rounded-lg border border-white/20 bg-white/5 p-2 text-sm text-white outline-none focus:border-white/40"
-              />
-            </label>
-            <label className="flex flex-col gap-1 text-xs text-white/60">
               Frase de propósito
               <input
                 value={draft.purposePhrase}
@@ -121,6 +130,9 @@ function DashboardHero() {
                 className="rounded-lg border border-white/20 bg-white/5 p-2 text-sm text-white outline-none focus:border-white/40"
               />
             </label>
+            <p className="text-[11px] text-white/40">
+              O versículo troca automaticamente a cada hora e não é mais editável aqui.
+            </p>
             <button
               type="button"
               onClick={save}
