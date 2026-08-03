@@ -277,3 +277,26 @@ export const aiInsightsRelations = relations(aiInsights, ({ one }) => ({
   client: one(clients, { fields: [aiInsights.clientId], references: [clients.id] }),
   contract: one(contracts, { fields: [aiInsights.contractId], references: [contracts.id] }),
 }));
+export const creativeConversations = pgTable("creative_conversations", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  userId: uuid("user_id").references(() => users.id),
+  title: text("title").notNull().default("Novo conteúdo"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const creativeMessages = pgTable("creative_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  conversationId: uuid("conversation_id").references(() => creativeConversations.id).notNull(),
+  role: text("role").notNull(),
+  content: text("content").notNull(),
+  imageBase64: text("image_base64"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const creativeConversationsRelations = relations(creativeConversations, ({ many }) => ({
+  messages: many(creativeMessages),
+}));
+
+export const creativeMessagesRelations = relations(creativeMessages, ({ one }) => ({
+  conversation: one(creativeConversations, { fields: [creativeMessages.conversationId], references: [creativeConversations.id] }),
+}));

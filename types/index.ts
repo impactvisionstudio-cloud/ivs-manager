@@ -36,6 +36,7 @@ export type Permission =
   | "financeiro.manage"
   | "contratos.manage"
   | "ia.use"
+  | "diretorcriativo.use"
   | "admin.access";
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
@@ -47,6 +48,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   gestor: [
     "dashboard.view", "agenda.manage", "clientes.manage", "crm.manage",
     "equipe.manage", "financeiro.view", "contratos.manage", "ia.use",
+    "diretorcriativo.use",
   ],
   editor: ["dashboard.view", "agenda.manage", "ia.use"],
   designer: ["dashboard.view", "agenda.manage", "ia.use"],
