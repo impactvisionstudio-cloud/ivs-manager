@@ -67,3 +67,9 @@ export const BIBLE_VERSES: BibleVerse[] = [
   { text: "O Senhor é o meu pastor; nada me faltará.", ref: "Sl 23.1" },
   { text: "A graça do Senhor Jesus Cristo seja com todos.", ref: "Ap 22.21" },
 ];
+
+export function getHourlyVerse(): BibleVerse {
+  const hourKey = Math.floor(Date.now() / 3600000);
+  const index = hourKey % BIBLE_VERSES.length;
+  return BIBLE_VERSES[index];
+}
