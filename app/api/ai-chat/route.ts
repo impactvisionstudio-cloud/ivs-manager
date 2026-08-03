@@ -23,7 +23,7 @@ Fluxo obrigatório:
   "hasVisualIdentity": true|false,
   "competitors": [ { "name": string, "handle": string, "followers": string, "note": string } ]  (10 itens, concorrentes conhecidos do nicho, com base no seu conhecimento, seguidores aproximados),
   "postIdeas": [ string ] (10 ideias virais de post, específicas pro nicho),
-  "painPoints": [ { "pain": string, "solution": string } ] (10 dores do nicho com solução),
+  "painPoints": [ { "pain": string, "solution": string } ]  (EXATAMENTE 10 itens, nem a mais nem a menos. Dores reais do CLIENTE FINAL desse nicho -- ou seja, a dor de quem CONTRATARIA um negocio como esse, nao a dor de quem JA TEM o negocio. Ex: pro nicho academia, e a dor de quem quer malhar (falta de tempo, vergonha de comecar, nao ver resultado); pro nicho audiovisual, e a dor de quem precisa gravar video (nao sabe roteirizar, medo de aparecer, achou caro antes). Para cada dor, a "solution" deve ser como ESSE NEGOCIO resolve isso, funcionando como gancho de venda/conteudo),
   "instagramNameSuggestions": [ string ] | null (só preencha se hasInstagram for false; senão null),
   "visualIdentityTips": [ string ] | null (só preencha se hasVisualIdentity for false; senão null)
 }
