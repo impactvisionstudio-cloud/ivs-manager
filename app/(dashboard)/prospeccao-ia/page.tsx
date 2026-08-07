@@ -13,6 +13,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { LeadDetailDialog } from "@/components/leads/lead-detail-dialog";
 
 export type LeadStatus =
   | "nao_contatado"
@@ -73,7 +74,6 @@ interface ImportRow {
   category?: string;
 }
 
-// Remove acentos e caixa alta pra comparar nomes de coluna com mais tolerância
 function normalizeHeader(header: string): string {
   return header
     .normalize("NFD")
@@ -82,7 +82,6 @@ function normalizeHeader(header: string): string {
     .toLowerCase();
 }
 
-// Reconhece a coluna certa mesmo com variações (acento, espaço, colunas grudadas tipo "Nome do localtítulo")
 function matchField(normalizedKey: string): keyof ImportRow | undefined {
   if (normalizedKey.startsWith("nome do local")) return "name";
   if (normalizedKey === "nome") return "name";
@@ -138,6 +137,8 @@ export default function ProspeccaoIAPage() {
   const [categoryFilter, setCategoryFilter] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const [selectedLeadId, setSelectedLeadId] = useState<string | null>(null);
+  const [dialogOpen, setDialogOpen] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadLeads = useCallback(async () => {
@@ -225,6 +226,11 @@ export default function ProspeccaoIAPage() {
       toast.error("Não foi possível conectar à API para atualizar o status.");
       loadLeads();
     }
+  };
+
+  const openLead = (lead: Lead) => {
+    setSelectedLeadId(lead.id);
+    setDialogOpen(true);
   };
 
   const categories = useMemo(
@@ -376,6 +382,7 @@ export default function ProspeccaoIAPage() {
                   {filtered.map((lead) => (
                     <tr
                       key={lead.id}
+                      onClick={() => openLead(lead)}
                       className="cursor-pointer border-b border-border/60 transition-colors hover:bg-accent/40"
                     >
                       <td className="p-3 font-medium">{lead.name}</td>
@@ -419,6 +426,13 @@ export default function ProspeccaoIAPage() {
           )}
         </CardContent>
       </Card>
+
+      <LeadDetailDialog
+        leadId={selectedLeadId}
+        open={dialogOpen}
+        onOpenChange={setDialogOpen}
+        onChanged={loadLeads}
+      />
     </DashboardShell>
   );
 }
