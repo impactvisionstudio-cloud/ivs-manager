@@ -62,23 +62,6 @@ const STATUS_VARIANT: Record<LeadStatus, "success" | "secondary" | "warning"> = 
 
 const STATUS_OPTIONS = Object.keys(STATUS_LABEL) as LeadStatus[];
 
-// Mapeia os cabeçalhos aceitos na planilha (com variações de escrita) para os campos do lead
-const COLUMN_MAP: Record<string, keyof ImportRow> = {
-  "nome do local": "name",
-  "nome": "name",
-  "título": "title",
-  "titulo": "title",
-  "endereço": "address",
-  "endereco": "address",
-  "cidade": "city",
-  "estado": "state",
-  "telefone": "phone",
-  "url maps": "mapsUrl",
-  "url do maps": "mapsUrl",
-  "nome da categoria": "category",
-  "categoria": "category",
-};
-
 interface ImportRow {
   name: string;
   title?: string;
@@ -88,6 +71,29 @@ interface ImportRow {
   phone?: string;
   mapsUrl?: string;
   category?: string;
+}
+
+// Remove acentos e caixa alta pra comparar nomes de coluna com mais tolerância
+function normalizeHeader(header: string): string {
+  return header
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim()
+    .toLowerCase();
+}
+
+// Reconhece a coluna certa mesmo com variações (acento, espaço, colunas grudadas tipo "Nome do localtítulo")
+function matchField(normalizedKey: string): keyof ImportRow | undefined {
+  if (normalizedKey.startsWith("nome do local")) return "name";
+  if (normalizedKey === "nome") return "name";
+  if (normalizedKey === "titulo") return "title";
+  if (normalizedKey === "endereco") return "address";
+  if (normalizedKey === "cidade") return "city";
+  if (normalizedKey === "estado") return "state";
+  if (normalizedKey === "telefone" || normalizedKey === "fone") return "phone";
+  if (normalizedKey.includes("url") && normalizedKey.includes("maps")) return "mapsUrl";
+  if (normalizedKey.includes("categoria")) return "category";
+  return undefined;
 }
 
 function parseSheetFile(file: File): Promise<ImportRow[]> {
@@ -104,8 +110,8 @@ function parseSheetFile(file: File): Promise<ImportRow[]> {
         const rows: ImportRow[] = rawRows.map((raw) => {
           const row: Partial<ImportRow> = {};
           for (const key of Object.keys(raw)) {
-            const normalizedKey = key.trim().toLowerCase();
-            const field = COLUMN_MAP[normalizedKey];
+            const normalizedKey = normalizeHeader(key);
+            const field = matchField(normalizedKey);
             if (field) {
               const value = String(raw[key] ?? "").trim();
               if (value) row[field] = value;
@@ -162,7 +168,7 @@ export default function ProspeccaoIAPage() {
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    e.target.value = ""; // permite selecionar o mesmo arquivo de novo depois
+    e.target.value = "";
     if (!file) return;
 
     setImporting(true);
