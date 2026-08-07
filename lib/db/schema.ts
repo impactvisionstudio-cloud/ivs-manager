@@ -277,6 +277,60 @@ export const aiInsightsRelations = relations(aiInsights, ({ one }) => ({
   client: one(clients, { fields: [aiInsights.clientId], references: [clients.id] }),
   contract: one(contracts, { fields: [aiInsights.contractId], references: [contracts.id] }),
 }));
+
+// ── Prospecção IA ─────────────────────────────────────────────────────
+export const leadStatusEnum = pgEnum("lead_status", [
+  "nao_contatado", "primeira_mensagem", "respondeu", "reuniao_marcada", "proposta_enviada", "cliente", "perdido",
+]);
+
+export const leads = pgTable("leads", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  name: text("name").notNull(),
+  title: text("title"),
+  address: text("address"),
+  city: text("city"),
+  state: text("state"),
+  phone: text("phone"),
+  mapsUrl: text("maps_url"),
+  category: text("category"),
+  status: leadStatusEnum("status").notNull().default("nao_contatado"),
+  responsibleId: uuid("responsible_id").references(() => users.id),
+  notes: text("notes"),
+  aiAnalysis: jsonb("ai_analysis"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const leadMessages = pgTable("lead_messages", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: uuid("lead_id").references(() => leads.id).notNull(),
+  kind: text("kind").notNull().default("mensagem"),
+  content: text("content").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const leadHistory = pgTable("lead_history", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: uuid("lead_id").references(() => leads.id).notNull(),
+  userId: uuid("user_id").references(() => users.id),
+  action: text("action").notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export const leadsRelations = relations(leads, ({ many, one }) => ({
+  messages: many(leadMessages),
+  history: many(leadHistory),
+  responsible: one(users, { fields: [leads.responsibleId], references: [users.id] }),
+}));
+
+export const leadMessagesRelations = relations(leadMessages, ({ one }) => ({
+  lead: one(leads, { fields: [leadMessages.leadId], references: [leads.id] }),
+}));
+
+export const leadHistoryRelations = relations(leadHistory, ({ one }) => ({
+  lead: one(leads, { fields: [leadHistory.leadId], references: [leads.id] }),
+  user: one(users, { fields: [leadHistory.userId], references: [users.id] }),
+}));
+
 export const creativeConversations = pgTable("creative_conversations", {
   id: uuid("id").defaultRandom().primaryKey(),
   userId: uuid("user_id").references(() => users.id),
