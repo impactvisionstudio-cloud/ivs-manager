@@ -30,15 +30,15 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const rows: ImportRow[] = Array.isArray(body?.rows) ? body.rows : [];
+    const receivedTotal = rows.length;
 
-    if (rows.length === 0) {
+    if (receivedTotal === 0) {
       return NextResponse.json({ error: "Nenhuma linha válida encontrada na planilha." }, { status: 400 });
     }
 
-    // Ignora linhas sem nome (linhas vazias/incompletas)
     const validRows = rows.filter((r) => r.name && r.name.trim().length > 0);
+    const skippedNoName = receivedTotal - validRows.length;
 
-    // Remove duplicados dentro da própria planilha, pelo telefone
     const seenPhones = new Set<string>();
     const dedupedRows: ImportRow[] = [];
     for (const row of validRows) {
@@ -47,8 +47,8 @@ export async function POST(req: NextRequest) {
       if (phone) seenPhones.add(phone);
       dedupedRows.push(row);
     }
+    const skippedDuplicateInFile = validRows.length - dedupedRows.length;
 
-    // Remove duplicados contra o que já existe no banco, pelo telefone
     const existing = await db.select({ phone: leads.phone }).from(leads);
     const existingPhones = new Set(existing.map((e) => (e.phone || "").replace(/\D/g, "")).filter(Boolean));
 
@@ -56,8 +56,7 @@ export async function POST(req: NextRequest) {
       const phone = (row.phone || "").replace(/\D/g, "");
       return !phone || !existingPhones.has(phone);
     });
-
-    const skipped = rows.length - toInsert.length;
+    const skippedAlreadyExists = dedupedRows.length - toInsert.length;
 
     let inserted: (typeof leads.$inferSelect)[] = [];
     if (toInsert.length > 0) {
@@ -78,7 +77,17 @@ export async function POST(req: NextRequest) {
         .returning();
     }
 
-    return NextResponse.json({ imported: inserted.length, skipped, items: inserted }, { status: 201 });
+    return NextResponse.json(
+      {
+        imported: inserted.length,
+        receivedTotal,
+        skippedNoName,
+        skippedDuplicateInFile,
+        skippedAlreadyExists,
+        items: inserted,
+      },
+      { status: 201 }
+    );
   } catch (err) {
     console.error("[api/leads POST]", err);
     return NextResponse.json({ error: err instanceof Error ? err.message : "Erro ao importar leads" }, { status: 500 });

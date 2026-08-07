@@ -196,7 +196,9 @@ export default function ProspeccaoIAPage() {
       }
 
       toast.success(
-        `${data.imported} empresa(s) importada(s)${data.skipped > 0 ? `, ${data.skipped} ignorada(s) (vazia ou duplicada)` : ""}.`
+        `${data.imported} nova(s) importada(s) de ${data.receivedTotal} linha(s) lidas. ` +
+        `Puladas: ${data.skippedNoName} sem nome, ${data.skippedDuplicateInFile} repetidas na planilha, ${data.skippedAlreadyExists} já cadastradas.`,
+        { duration: 15000 }
       );
       loadLeads();
     } catch (err) {
