@@ -8,10 +8,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import {
-  MapPin, Phone, MessageSquareText, Copy, Check, Send, RefreshCw, Clock, Loader2,
+  MapPin, Phone, MessageSquareText, Copy, Check, Send, RefreshCw, Clock, Loader2, Trash2,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Lead, LeadStatus } from "@/app/(dashboard)/prospeccao-ia/page";
+import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 
 const STATUS_LABEL: Record<LeadStatus, string> = {
   nao_contatado: "Não Contatado",
@@ -50,7 +51,7 @@ interface Props {
   leadId: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onChanged: () => void; // avisa a tabela pra recarregar (status mudou, etc)
+  onChanged: () => void; // avisa a tabela pra recarregar (status mudou, lead apagado, etc)
 }
 
 export function LeadDetailDialog({ leadId, open, onOpenChange, onChanged }: Props) {
@@ -62,6 +63,8 @@ export function LeadDetailDialog({ leadId, open, onOpenChange, onChanged }: Prop
   const [notes, setNotes] = useState("");
   const [savingNotes, setSavingNotes] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const load = useCallback(async () => {
     if (!leadId) return;
@@ -163,7 +166,7 @@ export function LeadDetailDialog({ leadId, open, onOpenChange, onChanged }: Prop
       toast.success(
         data.kind === "mensagem" ? "Mensagem gerada!" : "Follow-up gerado!"
       );
-      load(); // recarrega lead (status pode ter mudado) e histórico
+      load();
       onChanged();
     } catch (err) {
       console.error("[lead-detail] generateMessage", err);
@@ -190,6 +193,26 @@ export function LeadDetailDialog({ leadId, open, onOpenChange, onChanged }: Prop
     const url = `https://wa.me/${phoneWithCountry}?text=${encodeURIComponent(msg.content)}`;
     window.open(url, "_blank");
     logHistory("Abriu WhatsApp");
+  };
+
+  const deleteLead = async () => {
+    if (!leadId) return;
+    setDeleting(true);
+    try {
+      const res = await fetch(`/api/leads/${leadId}`, { method: "DELETE" });
+      if (!res.ok) {
+        toast.error("Erro ao excluir lead.");
+        return;
+      }
+      toast.success("Lead excluído.");
+      onOpenChange(false);
+      onChanged();
+    } catch (err) {
+      console.error("[lead-detail] deleteLead", err);
+      toast.error("Não foi possível conectar à API para excluir o lead.");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const lastMessage = messages[messages.length - 1];
@@ -327,9 +350,28 @@ export function LeadDetailDialog({ leadId, open, onOpenChange, onChanged }: Prop
                 ))}
               </div>
             </div>
+
+            {/* Excluir lead */}
+            <div className="flex justify-end border-t border-border/60 pt-4">
+              <Button
+                variant="destructive"
+                size="sm"
+                onClick={() => setDeleteDialogOpen(true)}
+                disabled={deleting}
+              >
+                <Trash2 className="h-4 w-4" /> Excluir Lead
+              </Button>
+            </div>
           </>
         )}
       </DialogContent>
+
+      <ConfirmDeleteDialog
+        open={deleteDialogOpen}
+        onOpenChange={setDeleteDialogOpen}
+        itemName={lead?.name}
+        onConfirm={deleteLead}
+      />
     </Dialog>
   );
 }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { leads, leadHistory } from "@/lib/db/schema";
+import { leads, leadHistory, leadMessages } from "@/lib/db/schema";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
@@ -33,13 +33,10 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     for (const field of ["status", "notes", "responsibleId", "aiAnalysis"] as const) {
       if (field in body) allowed[field] = body[field];
     }
-
     const [item] = await db.update(leads).set(allowed).where(eq(leads.id, id)).returning();
     if (!item) {
       return NextResponse.json({ error: "Lead não encontrado" }, { status: 404 });
     }
-
-    // Registra no histórico quando o status muda
     if ("status" in allowed) {
       await db.insert(leadHistory).values({
         leadId: id,
@@ -47,7 +44,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         action: `Status alterado para "${allowed.status}"`,
       });
     }
-
     return NextResponse.json({ item });
   } catch (err) {
     console.error("[api/leads/id PATCH]", err);
@@ -58,6 +54,8 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
 export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   try {
+    await db.delete(leadHistory).where(eq(leadHistory.leadId, id));
+    await db.delete(leadMessages).where(eq(leadMessages.leadId, id));
     await db.delete(leads).where(eq(leads.id, id));
     return NextResponse.json({ success: true });
   } catch (err) {
