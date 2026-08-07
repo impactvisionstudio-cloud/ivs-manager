@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState, useEffect, useCallback } from "react";
+import { useMemo, useState, useEffect, useCallback, useRef } from "react";
+import * as XLSX from "xlsx";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import {
   Upload, Search, Bot, Users, PhoneOff, Send, MessageCircle,
-  CalendarCheck, FileCheck2, TrendingUp, ChevronRight,
+  CalendarCheck, FileCheck2, TrendingUp, ChevronRight, Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -61,13 +62,77 @@ const STATUS_VARIANT: Record<LeadStatus, "success" | "secondary" | "warning"> = 
 
 const STATUS_OPTIONS = Object.keys(STATUS_LABEL) as LeadStatus[];
 
+// Mapeia os cabeçalhos aceitos na planilha (com variações de escrita) para os campos do lead
+const COLUMN_MAP: Record<string, keyof ImportRow> = {
+  "nome do local": "name",
+  "nome": "name",
+  "título": "title",
+  "titulo": "title",
+  "endereço": "address",
+  "endereco": "address",
+  "cidade": "city",
+  "estado": "state",
+  "telefone": "phone",
+  "url maps": "mapsUrl",
+  "url do maps": "mapsUrl",
+  "nome da categoria": "category",
+  "categoria": "category",
+};
+
+interface ImportRow {
+  name: string;
+  title?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  phone?: string;
+  mapsUrl?: string;
+  category?: string;
+}
+
+function parseSheetFile(file: File): Promise<ImportRow[]> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = e.target?.result;
+        const workbook = XLSX.read(data, { type: "binary" });
+        const firstSheetName = workbook.SheetNames[0];
+        const sheet = workbook.Sheets[firstSheetName];
+        const rawRows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: "" });
+
+        const rows: ImportRow[] = rawRows.map((raw) => {
+          const row: Partial<ImportRow> = {};
+          for (const key of Object.keys(raw)) {
+            const normalizedKey = key.trim().toLowerCase();
+            const field = COLUMN_MAP[normalizedKey];
+            if (field) {
+              const value = String(raw[key] ?? "").trim();
+              if (value) row[field] = value;
+            }
+          }
+          return row as ImportRow;
+        });
+
+        resolve(rows);
+      } catch (err) {
+        reject(err);
+      }
+    };
+    reader.onerror = () => reject(new Error("Não foi possível ler o arquivo."));
+    reader.readAsBinaryString(file);
+  });
+}
+
 export default function ProspeccaoIAPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
+  const [importing, setImporting] = useState(false);
   const [query, setQuery] = useState("");
   const [categoryFilter, setCategoryFilter] = useState("");
   const [cityFilter, setCityFilter] = useState("");
   const [statusFilter, setStatusFilter] = useState("");
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const loadLeads = useCallback(async () => {
     setLoading(true);
@@ -90,6 +155,50 @@ export default function ProspeccaoIAPage() {
   useEffect(() => {
     loadLeads();
   }, [loadLeads]);
+
+  const handleImportClick = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = ""; // permite selecionar o mesmo arquivo de novo depois
+    if (!file) return;
+
+    setImporting(true);
+    try {
+      const rows = await parseSheetFile(file);
+      const validRows = rows.filter((r) => r.name && r.name.trim().length > 0);
+
+      if (validRows.length === 0) {
+        toast.error("Nenhuma linha válida encontrada na planilha (verifique a coluna 'Nome do Local').");
+        return;
+      }
+
+      const res = await fetch("/api/leads", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ rows: validRows }),
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        toast.error(data.error || "Erro ao importar planilha.");
+        return;
+      }
+
+      toast.success(
+        `${data.imported} empresa(s) importada(s)${data.skipped > 0 ? `, ${data.skipped} ignorada(s) (vazia ou duplicada)` : ""}.`
+      );
+      loadLeads();
+    } catch (err) {
+      console.error("[prospeccao-ia] import", err);
+      toast.error("Não foi possível ler o arquivo. Confirme que é um .xlsx ou .csv válido.");
+    } finally {
+      setImporting(false);
+    }
+  };
 
   const updateStatus = async (lead: Lead, status: LeadStatus) => {
     setLeads((prev) => prev.map((l) => (l.id === lead.id ? { ...l, status } : l)));
@@ -170,10 +279,19 @@ export default function ProspeccaoIAPage() {
             <p className="text-sm text-muted-foreground">{leads.length} empresas na base</p>
           </div>
         </div>
-        <Button>
-          <Upload className="h-4 w-4" />
-          Importar Planilha
-        </Button>
+        <div>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept=".xlsx,.xls,.csv"
+            className="hidden"
+            onChange={handleFileChange}
+          />
+          <Button onClick={handleImportClick} disabled={importing}>
+            {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
+            {importing ? "Importando..." : "Importar Planilha"}
+          </Button>
+        </div>
       </div>
 
       <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4 xl:grid-cols-8">
