@@ -354,3 +354,40 @@ export const creativeConversationsRelations = relations(creativeConversations, (
 export const creativeMessagesRelations = relations(creativeMessages, ({ one }) => ({
   conversation: one(creativeConversations, { fields: [creativeMessages.conversationId], references: [creativeConversations.id] }),
 }));
+
+// ── IVS Prospect B2B ──────────────────────────────────────────────────
+export const prospectLeadStatusEnum = pgEnum("prospect_lead_status", [
+  "novo", "contatado", "respondeu", "interessado", "negociacao",
+  "site_em_producao", "cliente", "sem_interesse", "sem_resposta",
+]);
+
+export const prospectLeads = pgTable("prospect_leads", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  companyName: text("company_name").notNull(),
+  phone: text("phone").notNull(),
+  niche: text("niche"),
+  status: prospectLeadStatusEnum("status").notNull().default("novo"),
+  assignedTo: uuid("assigned_to").references(() => users.id),
+  lastContactedAt: timestamp("last_contacted_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const prospectContacts = pgTable("prospect_contacts", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  leadId: uuid("lead_id").references(() => prospectLeads.id).notNull(),
+  messageIndex: integer("message_index").notNull(),
+  messageContent: text("message_content").notNull(),
+  sentBy: uuid("sent_by").references(() => users.id),
+  sentAt: timestamp("sent_at").defaultNow().notNull(),
+});
+
+export const prospectLeadsRelations = relations(prospectLeads, ({ many, one }) => ({
+  contacts: many(prospectContacts),
+  assignee: one(users, { fields: [prospectLeads.assignedTo], references: [users.id] }),
+}));
+
+export const prospectContactsRelations = relations(prospectContacts, ({ one }) => ({
+  lead: one(prospectLeads, { fields: [prospectContacts.leadId], references: [prospectLeads.id] }),
+  sender: one(users, { fields: [prospectContacts.sentBy], references: [users.id] }),
+}));
