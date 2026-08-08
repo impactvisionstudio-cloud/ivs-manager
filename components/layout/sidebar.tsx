@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard, Calendar, Users, Workflow, UserCog, Wallet,
-  FileSignature, ListChecks, Bell, Sparkles, Bot, Settings, ChevronsLeft, ChevronsRight, X,
+  FileSignature, ListChecks, Bell, Sparkles, Bot, Settings, ChevronsLeft, ChevronsRight, X, Send,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useUIStore } from "@/lib/store/ui-store";
@@ -29,6 +29,7 @@ const NAV_ITEMS: NavItem[] = [
   { href: "/checklist", label: "Checklist", icon: ListChecks },
   { href: "/notificacoes", label: "Notificações", icon: Bell },
   { href: "/ia", label: "IVS AI", icon: Sparkles, permission: "ia.use" },
+  { href: "/prospect-b2b", label: "Prospect B2B", icon: Send, permission: "prospectb2b.use" },
   { href: "/prospeccao-ia", label: "Prospecção IA", icon: Bot },
   { href: "/configuracoes", label: "Configurações", icon: Settings, permission: "admin.access" },
 ];

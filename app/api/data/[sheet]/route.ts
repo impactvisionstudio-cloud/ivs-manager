@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { clients, agendaEvents, transactions, contracts, checklistItems, teamMembers, teamNotes } from "@/lib/db/schema";
+import { clients, agendaEvents, transactions, contracts, checklistItems, teamMembers, teamNotes, prospectLeads, prospectContacts } from "@/lib/db/schema";
 
-type SheetName = "clientes" | "agenda" | "financeiro" | "contratos" | "checklist" | "membros" | "recados";
+type SheetName = "clientes" | "agenda" | "financeiro" | "contratos" | "checklist" | "membros" | "recados" | "prospectos" | "prospeccaocontatos";
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
-const VALID_SHEETS: SheetName[] = ["clientes", "agenda", "financeiro", "contratos", "checklist", "membros", "recados"];
+const VALID_SHEETS: SheetName[] = ["clientes", "agenda", "financeiro", "contratos", "checklist", "membros", "recados", "prospectos", "prospeccaocontatos"];
 
 function isValidSheet(sheet: string): sheet is SheetName {
   return (VALID_SHEETS as string[]).includes(sheet);
@@ -52,6 +52,12 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ she
       case "recados":
         items = await db.select().from(teamNotes);
         break;
+      case "prospectos":
+        items = await db.select().from(prospectLeads);
+        break;
+      case "prospeccaocontatos":
+        items = await db.select().from(prospectContacts);
+        break;
     }
     return NextResponse.json({ items });
   } catch (err) {
@@ -92,6 +98,14 @@ export async function POST(req: NextRequest, { params }: { params: Promise<{ she
         break;
       case "recados":
         [item] = await db.insert(teamNotes).values(body).returning();
+        break;
+      case "prospectos":
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [item] = await db.insert(prospectLeads).values(parseDates(body, ["lastContactedAt"]) as any).returning();
+        break;
+      case "prospeccaocontatos":
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        [item] = await db.insert(prospectContacts).values(parseDates(body, ["sentAt"]) as any).returning();
         break;
     }
     return NextResponse.json({ item }, { status: 201 });

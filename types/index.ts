@@ -37,6 +37,7 @@ export type Permission =
   | "contratos.manage"
   | "ia.use"
   | "diretorcriativo.use"
+  | "prospectb2b.use"
   | "admin.access";
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
@@ -48,7 +49,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   gestor: [
     "dashboard.view", "agenda.manage", "clientes.manage", "crm.manage",
     "equipe.manage", "financeiro.view", "contratos.manage", "ia.use",
-    "diretorcriativo.use",
+    "diretorcriativo.use", "prospectb2b.use",
   ],
   editor: ["dashboard.view", "agenda.manage", "ia.use"],
   designer: ["dashboard.view", "agenda.manage", "ia.use"],
@@ -185,4 +186,41 @@ export interface TeamNote {
   clientId?: string;
   contractId?: string;
   createdAt: string;
+}
+
+export type ProspectLeadStatus =
+  | "novo" | "contatado" | "respondeu" | "interessado" | "negociacao"
+  | "site_em_producao" | "cliente" | "sem_interesse" | "sem_resposta";
+
+export const PROSPECT_LEAD_STATUS_LABELS: Record<ProspectLeadStatus, string> = {
+  novo: "Novo",
+  contatado: "Contatado",
+  respondeu: "Respondeu",
+  interessado: "Interessado",
+  negociacao: "Negociação",
+  site_em_producao: "Site em produção",
+  cliente: "Cliente",
+  sem_interesse: "Sem interesse",
+  sem_resposta: "Sem resposta",
+};
+
+export interface ProspectLead {
+  id: string;
+  companyName: string;
+  phone: string;
+  niche?: string;
+  status: ProspectLeadStatus;
+  assignedTo?: string;
+  lastContactedAt?: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface ProspectContact {
+  id: string;
+  leadId: string;
+  messageIndex: number;
+  messageContent: string;
+  sentBy?: string;
+  sentAt: string;
 }
