@@ -9,9 +9,18 @@
 
 const TIMEZONE = "America/Sao_Paulo";
 
-function nowInBrasilia(): Date {
+interface BrasiliaNow {
+  weekday: number;
+  hour: number;
+  minute: number;
+  year: number;
+  month: number;
+  day: number;
+}
+
+function nowInBrasilia(): BrasiliaNow {
   // Converte "agora" para os componentes de data/hora de Brasília,
-  // reconstruindo um Date "local" equivalente pra facilitar comparações.
+  // reconstruindo um objeto "local" equivalente pra facilitar comparações.
   const parts = new Intl.DateTimeFormat("en-US", {
     timeZone: TIMEZONE,
     year: "numeric",
@@ -34,7 +43,7 @@ function nowInBrasilia(): Date {
     year: parseInt(get("year"), 10),
     month: parseInt(get("month"), 10),
     day: parseInt(get("day"), 10),
-  } as any;
+  };
 }
 
 export interface ScheduleStatus {
