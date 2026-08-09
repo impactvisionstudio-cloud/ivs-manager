@@ -1,11 +1,12 @@
 "use client";
 
 import { useRef, useState } from "react";
+import Link from "next/link";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Users, Send, MessageSquare, Star, Trophy, Target, Upload, X, Trash2 } from "lucide-react";
+import { Users, Send, MessageSquare, Star, Trophy, Target, Upload, X, Trash2, ListChecks } from "lucide-react";
 import type { ProspectLead, ProspectContact, ProspectLeadStatus } from "@/types";
 import { PROSPECT_LEAD_STATUS_LABELS } from "@/types";
 import { useCollection } from "@/lib/hooks/use-collection";
@@ -13,7 +14,7 @@ import { parseSpreadsheet, type ParseResult } from "@/lib/prospect-import";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
 import { toast } from "sonner";
 
-const DAILY_GOAL = 30;
+const DAILY_GOAL = 40;
 
 const STATUS_OPTIONS: ProspectLeadStatus[] = [
   "novo", "contatado", "respondeu", "interessado", "negociacao",
@@ -144,9 +145,16 @@ export default function ProspectB2BPage() {
           <h1 className="text-2xl font-semibold tracking-tight">IVS Prospect B2B</h1>
           <p className="text-sm text-muted-foreground">Prospecção organizada via WhatsApp</p>
         </div>
-        <Button onClick={() => setImportOpen(true)}>
-          <Upload className="h-4 w-4" /> Importar leads
-        </Button>
+        <div className="flex gap-2">
+          <Link href="/prospect-b2b/prospeccao">
+            <Button variant="secondary">
+              <ListChecks className="h-4 w-4" /> Fila de hoje
+            </Button>
+          </Link>
+          <Button onClick={() => setImportOpen(true)}>
+            <Upload className="h-4 w-4" /> Importar leads
+          </Button>
+        </div>
       </div>
 
       {loading ? (

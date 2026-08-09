@@ -1,5 +1,5 @@
 import {
-  pgTable, pgEnum, uuid, text, timestamp, numeric, integer, boolean, jsonb,
+  pgTable, pgEnum, uuid, text, timestamp, numeric, integer, boolean, jsonb, date,
 } from "drizzle-orm/pg-core";
 import { relations } from "drizzle-orm";
 
@@ -368,6 +368,10 @@ export const prospectLeads = pgTable("prospect_leads", {
   niche: text("niche"),
   status: prospectLeadStatusEnum("status").notNull().default("novo"),
   assignedTo: uuid("assigned_to").references(() => users.id),
+  // Dia em que o lead foi reservado pra fila de prospecção (impede reuso em outro dia)
+  assignedDate: date("assigned_date"),
+  // Índice (1, 2 ou 3) da mensagem sorteada pra esse lead no dia em que foi reservado
+  assignedMessageIndex: integer("assigned_message_index"),
   lastContactedAt: timestamp("last_contacted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -380,6 +384,21 @@ export const prospectContacts = pgTable("prospect_contacts", {
   messageContent: text("message_content").notNull(),
   sentBy: uuid("sent_by").references(() => users.id),
   sentAt: timestamp("sent_at").defaultNow().notNull(),
+});
+
+// 3 modelos de mensagem editáveis, usados no sorteio da fila diária
+export const prospectMessageTemplates = pgTable("prospect_message_templates", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  index: integer("index").notNull().unique(), // 1, 2 ou 3
+  content: text("content").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Configurações simples do módulo (ex: limite diário de leads)
+export const prospectSettings = pgTable("prospect_settings", {
+  key: text("key").primaryKey(), // ex: "daily_limit"
+  value: text("value").notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
 export const prospectLeadsRelations = relations(prospectLeads, ({ many, one }) => ({
