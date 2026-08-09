@@ -99,6 +99,9 @@ export async function DELETE(_req: NextRequest, { params }: { params: Promise<{ 
         await db.delete(checklistItems).where(eq(checklistItems.id, id));
         break;
       case "prospectos":
+        // Apaga primeiro o histórico de contatos desse lead (senão o banco
+        // bloqueia a exclusão por causa da referência entre as tabelas).
+        await db.delete(prospectContacts).where(eq(prospectContacts.leadId, id));
         await db.delete(prospectLeads).where(eq(prospectLeads.id, id));
         break;
       case "prospeccaocontatos":
