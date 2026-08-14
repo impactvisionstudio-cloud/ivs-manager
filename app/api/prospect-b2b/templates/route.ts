@@ -4,9 +4,9 @@ import { prospectMessageTemplates } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 const DEFAULT_TEMPLATES: Record<number, string> = {
-  1: "Olá, {{empresa}}! Tudo bem? Estava analisando o segmento de {{nicho}} e percebi uma coisa interessante na presença digital de vocês. Inclusive, tive uma ideia que poderia valorizar bastante a empresa. Posso te mostrar?",
-  2: "Olá, {{empresa}}! Tudo bem? Estava dando uma olhada no segmento de {{nicho}} e notei alguns detalhes na presença digital de vocês que me chamaram atenção. Inclusive, pensei em uma ideia que pode deixar a empresa ainda mais valorizada no digital. Posso te mostrar?",
-  3: "Olá, {{empresa}}! Tudo certo? Conheci vocês e, analisando um pouco a presença digital no segmento de {{nicho}}, tive uma ideia que acredito que poderia fazer bastante diferença. É algo bem simples, mas pode valorizar bastante a imagem da empresa. Posso te mostrar?",
+1: "Olá, {{empresa}}! Tudo bem? Muito prazer! Me chamo Daniel e trabalho com desenvolvimento de sites e posicionamento digital para {{nicho}}. Estava analisando a presença digital de vocês e percebi uma oportunidade que, na minha visão, poderia valorizar bastante a empresa e até facilitar a chegada de novos clientes. Inclusive, tive uma ideia específica pensando na empresa de vocês. Posso te mostrar?",
+2: "Olá, {{empresa}}! Tudo bem? Meu nome é Daniel e trabalho com desenvolvimento de sites e posicionamento digital para {{nicho}}. Estive conhecendo um pouco mais sobre a presença digital de vocês e encontrei alguns pontos que acredito que poderiam ser melhor aproveitados. Inclusive, pensei em uma solução específica para a empresa de vocês. Posso te mostrar rapidamente?",
+3: "Olá, {{empresa}}! Tudo certo? Sou o Daniel e trabalho ajudando {{nicho}} a melhorar sua presença digital através de sites profissionais e estratégias de posicionamento. Encontrei a {{empresa}} durante uma análise de empresas do segmento e achei o trabalho de vocês bem interessante. Vi uma oportunidade que poderia deixar a apresentação da empresa ainda mais profissional e ajudar vocês a transformar mais visitantes em clientes. Posso te mostrar a ideia que tive?",
 };
 
 export const dynamic = "force-dynamic";
