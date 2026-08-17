@@ -190,7 +190,7 @@ export interface TeamNote {
 
 export type ProspectLeadStatus =
   | "novo" | "contatado" | "respondeu" | "interessado" | "negociacao"
-  | "site_em_producao" | "cliente" | "sem_interesse" | "sem_resposta";
+  | "site_em_producao" | "cliente" | "sem_interesse" | "sem_resposta" | "sem_whatsapp";
 
 export const PROSPECT_LEAD_STATUS_LABELS: Record<ProspectLeadStatus, string> = {
   novo: "Novo",
@@ -202,6 +202,7 @@ export const PROSPECT_LEAD_STATUS_LABELS: Record<ProspectLeadStatus, string> = {
   cliente: "Cliente",
   sem_interesse: "Sem interesse",
   sem_resposta: "Sem resposta",
+  sem_whatsapp: "Não tem WhatsApp",
 };
 
 export interface ProspectLead {

@@ -358,7 +358,7 @@ export const creativeMessagesRelations = relations(creativeMessages, ({ one }) =
 // ── IVS Prospect B2B ──────────────────────────────────────────────────
 export const prospectLeadStatusEnum = pgEnum("prospect_lead_status", [
   "novo", "contatado", "respondeu", "interessado", "negociacao",
-  "site_em_producao", "cliente", "sem_interesse", "sem_resposta",
+  "site_em_producao", "cliente", "sem_interesse", "sem_resposta", "sem_whatsapp",
 ]);
 
 export const prospectLeads = pgTable("prospect_leads", {

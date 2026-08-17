@@ -18,7 +18,7 @@ const DAILY_GOAL = 40;
 
 const STATUS_OPTIONS: ProspectLeadStatus[] = [
   "novo", "contatado", "respondeu", "interessado", "negociacao",
-  "site_em_producao", "cliente", "sem_interesse", "sem_resposta", "sem_whatsapp",
+  "site_em_producao", "cliente", "sem_interesse", "sem_resposta",
 ];
 
 const STATUS_VARIANT: Record<ProspectLeadStatus, "success" | "secondary" | "warning" | "danger"> = {
@@ -31,27 +31,7 @@ const STATUS_VARIANT: Record<ProspectLeadStatus, "success" | "secondary" | "warn
   cliente: "success",
   sem_interesse: "danger",
   sem_resposta: "danger",
-  sem_whatsapp: "danger",
 };
-
-const RESPONDED_STATUSES: ProspectLeadStatus[] = [
-  "respondeu", "interessado", "negociacao", "site_em_producao", "cliente",
-];
-
-const INTERESTED_STATUSES: ProspectLeadStatus[] = [
-  "interessado", "negociacao", "site_em_producao",
-];
-
-type FilterKey =
-  | "todos"
-  | "contatados_hoje"
-  | "responderam"
-  | "interessados"
-  | "clientes"
-  | "faltando_enviar"
-  | "sem_whatsapp"
-  | "hoje_enviados"
-  | "ja_enviados";
 
 function isToday(dateStr: string) {
   const d = new Date(dateStr);
@@ -73,67 +53,32 @@ export default function ProspectB2BPage() {
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<ParseResult | null>(null);
   const [deleting, setDeleting] = useState<ProspectLead | null>(null);
-  const [activeFilter, setActiveFilter] = useState<FilterKey>("todos");
 
   const loading = loadingLeads || loadingContacts;
 
-  const contactedTodayIds = new Set(
+  const contactedToday = new Set(
     contacts.filter((c) => isToday(c.sentAt)).map((c) => c.leadId)
-  );
-  const contactedToday = contactedTodayIds.size;
+  ).size;
 
-  const responded = leads.filter((l) => RESPONDED_STATUSES.includes(l.status)).length;
-  const interested = leads.filter((l) => INTERESTED_STATUSES.includes(l.status)).length;
+  const responded = leads.filter((l) =>
+    ["respondeu", "interessado", "negociacao", "site_em_producao", "cliente"].includes(l.status)
+  ).length;
+
+  const interested = leads.filter((l) =>
+    ["interessado", "negociacao", "site_em_producao"].includes(l.status)
+  ).length;
+
   const clients = leads.filter((l) => l.status === "cliente").length;
-
-  const sentLeadIds = new Set(contacts.map((c) => c.leadId));
-  const pendingSend = leads.filter((lead) => !sentLeadIds.has(lead.id)).length;
-  const noWhatsapp = leads.filter((lead) => lead.status === "sem_whatsapp").length;
-  const alreadySent = leads.filter((lead) => lead.status === "contatado").length;
 
   const goalProgress = Math.min(100, Math.round((contactedToday / DAILY_GOAL) * 100));
 
-  const cards: { key: FilterKey; label: string; value: number; icon: typeof Users }[] = [
-    { key: "todos", label: "Total de leads", value: leads.length, icon: Users },
-    { key: "contatados_hoje", label: "Contatados hoje", value: contactedToday, icon: Send },
-    { key: "responderam", label: "Responderam", value: responded, icon: MessageSquare },
-    { key: "interessados", label: "Interessados", value: interested, icon: Star },
-    { key: "clientes", label: "Clientes", value: clients, icon: Trophy },
-    { key: "faltando_enviar", label: "Faltando enviar", value: pendingSend, icon: Send },
-    { key: "sem_whatsapp", label: "Não tem WhatsApp", value: noWhatsapp, icon: MessageSquare },
-    { key: "hoje_enviados", label: "Leads de hoje enviados", value: contactedToday, icon: Send },
-    { key: "ja_enviados", label: "Leads já enviados", value: alreadySent, icon: ListChecks },
+  const cards = [
+    { label: "Total de leads", value: leads.length, icon: Users },
+    { label: "Contatados hoje", value: contactedToday, icon: Send },
+    { label: "Responderam", value: responded, icon: MessageSquare },
+    { label: "Interessados", value: interested, icon: Star },
+    { label: "Clientes", value: clients, icon: Trophy },
   ];
-
-  const filteredLeads = leads.filter((lead) => {
-    switch (activeFilter) {
-      case "contatados_hoje":
-        return contactedTodayIds.has(lead.id);
-      case "responderam":
-        return RESPONDED_STATUSES.includes(lead.status);
-      case "interessados":
-        return INTERESTED_STATUSES.includes(lead.status);
-      case "clientes":
-        return lead.status === "cliente";
-      case "faltando_enviar":
-        return !sentLeadIds.has(lead.id);
-      case "sem_whatsapp":
-        return lead.status === "sem_whatsapp";
-      case "hoje_enviados":
-        return contactedTodayIds.has(lead.id);
-      case "ja_enviados":
-        return lead.status === "contatado";
-      case "todos":
-      default:
-        return true;
-    }
-  });
-
-  const activeCard = cards.find((c) => c.key === activeFilter);
-  const listTitle =
-    activeFilter === "todos"
-      ? `Leads importados (${filteredLeads.length})`
-      : `${activeCard?.label} (${filteredLeads.length})`;
 
   const handleFileSelected = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -193,10 +138,6 @@ export default function ProspectB2BPage() {
     setPreview(null);
   };
 
-  const toggleFilter = (key: FilterKey) => {
-    setActiveFilter((prev) => (prev === key ? "todos" : key));
-  };
-
   return (
     <DashboardShell>
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
@@ -221,30 +162,17 @@ export default function ProspectB2BPage() {
       ) : (
         <>
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
-            {cards.map((c) => {
-              const isActive = activeFilter === c.key;
-              return (
-                <Card
-                  key={c.key}
-                  onClick={() => toggleFilter(c.key)}
-                  className={`cursor-pointer transition-all hover:border-primary-500/60 hover:shadow-md ${
-                    isActive ? "border-primary-500 ring-1 ring-primary-500/60 bg-primary-600/5" : ""
-                  }`}
-                >
-                  <CardContent className="flex flex-col gap-2 p-4">
-                    <div
-                      className={`flex h-9 w-9 items-center justify-center rounded-lg transition-colors ${
-                        isActive ? "bg-primary-600/25 text-primary-300" : "bg-primary-600/15 text-primary-400"
-                      }`}
-                    >
-                      <c.icon className="h-4.5 w-4.5" />
-                    </div>
-                    <p className="text-2xl font-semibold tracking-tight">{c.value}</p>
-                    <p className="text-xs text-muted-foreground">{c.label}</p>
-                  </CardContent>
-                </Card>
-              );
-            })}
+            {cards.map((c) => (
+              <Card key={c.label}>
+                <CardContent className="flex flex-col gap-2 p-4">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary-600/15 text-primary-400">
+                    <c.icon className="h-4.5 w-4.5" />
+                  </div>
+                  <p className="text-2xl font-semibold tracking-tight">{c.value}</p>
+                  <p className="text-xs text-muted-foreground">{c.label}</p>
+                </CardContent>
+              </Card>
+            ))}
           </div>
 
           <Card className="mt-4">
@@ -268,19 +196,9 @@ export default function ProspectB2BPage() {
           </Card>
 
           <div className="mt-6">
-            <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-              <h2 className="text-sm font-medium text-muted-foreground">{listTitle}</h2>
-              {activeFilter !== "todos" && (
-                <button
-                  onClick={() => setActiveFilter("todos")}
-                  className="text-xs font-medium text-primary-400 hover:text-primary-300"
-                >
-                  Mostrar todos os leads
-                </button>
-              )}
-            </div>
+            <h2 className="mb-3 text-sm font-medium text-muted-foreground">Leads importados ({leads.length})</h2>
             <div className="space-y-2">
-              {filteredLeads.map((lead) => (
+              {leads.map((lead) => (
                 <Card key={lead.id}>
                   <CardContent className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between">
                     <div>
@@ -307,11 +225,7 @@ export default function ProspectB2BPage() {
                   </CardContent>
                 </Card>
               ))}
-              {filteredLeads.length === 0 && (
-                <p className="text-sm text-muted-foreground">
-                  {leads.length === 0 ? "Nenhum lead importado ainda." : "Nenhum lead encontrado para este filtro."}
-                </p>
-              )}
+              {leads.length === 0 && <p className="text-sm text-muted-foreground">Nenhum lead importado ainda.</p>}
             </div>
           </div>
         </>
