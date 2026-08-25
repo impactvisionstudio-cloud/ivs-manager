@@ -47,7 +47,7 @@ export const clients = pgTable("clients", {
   createdBy: uuid("created_by").references(() => users.id),
 });
 
-// ── Diagnóstico comercial ──────────────────────────────────────────────
+// ── Diagnóstico comercial ────────────────────────────────────────────
 export const diagnostics = pgTable("diagnostics", {
   id: uuid("id").defaultRandom().primaryKey(),
   companyName: text("company_name").notNull(),
@@ -216,7 +216,7 @@ export const aiMessages = pgTable("ai_messages", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ── Equipe ──────────────────────────────────────────────────────────────
+// ── Equipe ────────────────────────────────────────────────────────────
 export const teamMembers = pgTable("team_members", {
   id: uuid("id").defaultRandom().primaryKey(),
   name: text("name").notNull(),
@@ -236,7 +236,7 @@ export const teamNotes = pgTable("team_notes", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
 
-// ── IVS AI ──────────────────────────────────────────────────────────────
+// ── IVS AI ────────────────────────────────────────────────────────────
 export const aiInsights = pgTable("ai_insights", {
   id: uuid("id").defaultRandom().primaryKey(),
   clientId: uuid("client_id").references(() => clients.id),
@@ -278,7 +278,7 @@ export const aiInsightsRelations = relations(aiInsights, ({ one }) => ({
   contract: one(contracts, { fields: [aiInsights.contractId], references: [contracts.id] }),
 }));
 
-// ── Prospecção IA ─────────────────────────────────────────────────────
+// ── Prospecção IA ────────────────────────────────────────────────────
 export const leadStatusEnum = pgEnum("lead_status", [
   "nao_contatado", "primeira_mensagem", "respondeu", "reuniao_marcada", "proposta_enviada", "cliente", "perdido",
 ]);
@@ -319,8 +319,7 @@ export const leadHistory = pgTable("lead_history", {
 export const leadsRelations = relations(leads, ({ many, one }) => ({
   messages: many(leadMessages),
   history: many(leadHistory),
-  responsible: one(users, { fields: [leads.responsibleId], references: [users.id] }),
-}));
+  responsible: one(users, { fields: [leads.responsibleId], references: [users.id] }),}));
 
 export const leadMessagesRelations = relations(leadMessages, ({ one }) => ({
   lead: one(leads, { fields: [leadMessages.leadId], references: [leads.id] }),
@@ -367,14 +366,15 @@ export const prospectLeads = pgTable("prospect_leads", {
   phone: text("phone").notNull(),
   niche: text("niche"),
   status: prospectLeadStatusEnum("status").notNull().default("novo"),
-  // Dono exclusivo do lead (opcional). Se preenchido, só a fila diária
-  // desse usuário pode reservar/contatar esse lead — usado quando uma
-  // planilha é importada só para uma pessoa específica.
-  ownerId: uuid("owner_id").references(() => users.id),
+  assignedTo: uuid("assigned_to").references(() => users.id),
   // Dia em que o lead foi reservado pra fila de prospecção (impede reuso em outro dia)
   assignedDate: date("assigned_date"),
   // Índice (1, 2 ou 3) da mensagem sorteada pra esse lead no dia em que foi reservado
   assignedMessageIndex: integer("assigned_message_index"),
+  // Dono exclusivo do lead (opcional). Se preenchido, só a fila diária
+  // desse usuário pode reservar/contatar esse lead — usado quando uma
+  // planilha é importada só para uma pessoa específica.
+  ownerId: uuid("owner_id").references(() => users.id),
   lastContactedAt: timestamp("last_contacted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
