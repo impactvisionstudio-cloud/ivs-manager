@@ -42,10 +42,10 @@ export type Permission =
 
 export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   administrador: [
-    "dashboard.view", "agenda.manage", "clientes.manage", "crm.manage",
-    "equipe.manage", "financeiro.view", "financeiro.manage",
-    "contratos.manage", "ia.use", "admin.access",
-  ],
+  "dashboard.view", "agenda.manage", "clientes.manage", "crm.manage",
+  "equipe.manage", "financeiro.view", "financeiro.manage",
+  "contratos.manage", "ia.use", "admin.access", "prospectb2b.use",
+],
   gestor: [
     "dashboard.view", "agenda.manage", "clientes.manage", "crm.manage",
     "equipe.manage", "financeiro.view", "contratos.manage", "ia.use",

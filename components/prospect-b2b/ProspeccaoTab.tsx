@@ -18,6 +18,7 @@ interface QueueResponse {
   queue: QueueItem[];
   contatadosHoje: number;
   restanteHoje: number;
+  dailyLimit: number;
 }
 
 export default function ProspeccaoTab() {
@@ -66,7 +67,7 @@ export default function ProspeccaoTab() {
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <p className="text-sm text-ivs-muted">
-          {data.contatadosHoje}/30 contatados hoje · {data.restanteHoje} vagas restantes na fila
+          {data.contatadosHoje}/{data.dailyLimit} contatados hoje · {data.restanteHoje} vagas restantes na fila
         </p>
       </div>
 

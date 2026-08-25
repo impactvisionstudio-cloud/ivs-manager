@@ -89,7 +89,7 @@ export default function ProspectB2BPage() {
   const sentLeadIds = new Set(contacts.map((c) => c.leadId));
   const pendingSend = leads.filter((lead) => !sentLeadIds.has(lead.id)).length;
   const noWhatsapp = leads.filter((lead) => lead.status === "sem_whatsapp").length;
-  const alreadySent = leads.filter((lead) => lead.status === "contatado").length;
+  const alreadySent = sentLeadIds.size;
 
   const goalProgress = Math.min(100, Math.round((contactedToday / DAILY_GOAL) * 100));
 

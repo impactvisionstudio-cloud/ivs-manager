@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { eq } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { clients, agendaEvents, transactions, contracts, checklistItems, teamMembers, teamNotes, prospectLeads, prospectContacts } from "@/lib/db/schema";
+import { clients, agendaEvents, transactions, contracts, checklistItems, teamMembers, teamNotes, prospectLeads, prospectContacts, users } from "@/lib/db/schema";
+import { createClient } from "@/lib/supabase/server";
+import { ROLE_PERMISSIONS } from "@/types";
+import type { Permission, Role } from "@/types";
 
 type SheetName = "clientes" | "agenda" | "financeiro" | "contratos" | "checklist" | "membros" | "recados" | "prospectos" | "prospeccaocontatos";
 
@@ -23,11 +27,50 @@ function parseDates(body: Record<string, unknown>, fields: string[]) {
   return out;
 }
 
+// Usado só pelos sheets do Prospect B2B ("prospectos" e "prospeccaocontatos"):
+// confere login + permissão "prospectb2b.use", igual ao endpoint
+// /api/prospect-b2b/prospeccao. Devolve o usuário do banco ou null.
+async function requireProspectAccess() {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) return null;
+
+  const [dbUser] = await db.select().from(users).where(eq(users.authId, authUser.id));
+  if (!dbUser) return null;
+
+  const permissions = ROLE_PERMISSIONS[dbUser.role as Role] ?? [];
+  if (!permissions.includes("prospectb2b.use" as Permission)) return null;
+
+  return dbUser;
+}
+
 export async function GET(_req: NextRequest, { params }: { params: Promise<{ sheet: string }> }) {
   const { sheet } = await params;
   if (!isValidSheet(sheet)) {
     return NextResponse.json({ error: `Módulo "${sheet}" inválido` }, { status: 400 });
   }
+
+  // Prospect B2B: exige permissão específica e, no caso dos contatos, só
+  // devolve os do próprio usuário autenticado — é isso que faz os
+  // contadores da página (contatados hoje, já enviados etc.) ficarem
+  // automaticamente separados por usuário, sem mexer na página em si.
+  if (sheet === "prospectos" || sheet === "prospeccaocontatos") {
+    const dbUser = await requireProspectAccess();
+    if (!dbUser) {
+      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+    }
+    if (sheet === "prospeccaocontatos") {
+      const items = await db.select().from(prospectContacts).where(eq(prospectContacts.sentBy, dbUser.id));
+      return NextResponse.json({ items });
+    }
+    // "prospectos" continua sendo a base compartilhada de leads (mesma
+    // lista de empresas pra prospectar) — só passou a exigir permissão.
+    const items = await db.select().from(prospectLeads);
+    return NextResponse.json({ items });
+  }
+
   try {
     let items;
     switch (sheet) {
@@ -51,12 +94,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ she
         break;
       case "recados":
         items = await db.select().from(teamNotes);
-        break;
-      case "prospectos":
-        items = await db.select().from(prospectLeads);
-        break;
-      case "prospeccaocontatos":
-        items = await db.select().from(prospectContacts);
         break;
     }
     return NextResponse.json({ items });
