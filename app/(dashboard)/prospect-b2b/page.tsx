@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { DashboardShell } from "@/components/layout/dashboard-shell";
 import { Card, CardContent } from "@/components/ui/card";
@@ -12,9 +12,8 @@ import { PROSPECT_LEAD_STATUS_LABELS } from "@/types";
 import { useCollection } from "@/lib/hooks/use-collection";
 import { parseSpreadsheet, type ParseResult } from "@/lib/prospect-import";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
+import { useAuthStore } from "@/lib/store/auth-store";
 import { toast } from "sonner";
-
-const DAILY_GOAL = 40;
 
 const STATUS_OPTIONS: ProspectLeadStatus[] = [
   "novo", "contatado", "respondeu", "interessado", "negociacao",
@@ -66,14 +65,23 @@ function isToday(dateStr: string) {
 export default function ProspectB2BPage() {
   const { items: leads, loading: loadingLeads, refresh: refreshLeads, update: updateLead, remove: removeLead } = useCollection<ProspectLead>("prospectos");
   const { items: contacts, loading: loadingContacts } = useCollection<ProspectContact>("prospeccaocontatos");
+  const currentUser = useAuthStore((s) => s.user);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<ParseResult | null>(null);
+  const [reserveForMe, setReserveForMe] = useState(false);
   const [deleting, setDeleting] = useState<ProspectLead | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterKey>("todos");
+
+  const [dailyGoal, setDailyGoal] = useState(40);
+  useEffect(() => {
+    fetch("/api/prospect-b2b/prospeccao")
+      .then((r) => r.json())
+      .then((d) => { if (d.dailyLimit) setDailyGoal(d.dailyLimit); });
+  }, []);
 
   const loading = loadingLeads || loadingContacts;
 
@@ -89,9 +97,12 @@ export default function ProspectB2BPage() {
   const sentLeadIds = new Set(contacts.map((c) => c.leadId));
   const pendingSend = leads.filter((lead) => !sentLeadIds.has(lead.id)).length;
   const noWhatsapp = leads.filter((lead) => lead.status === "sem_whatsapp").length;
+  // "prospeccaocontatos" já vem filtrado por usuário logado (API), então
+  // sentLeadIds já reflete só os envios desse usuário — não usar mais
+  // lead.status aqui, que é global e misturaria Daniel com Eduardo.
   const alreadySent = sentLeadIds.size;
 
-  const goalProgress = Math.min(100, Math.round((contactedToday / DAILY_GOAL) * 100));
+  const goalProgress = Math.min(100, Math.round((contactedToday / dailyGoal) * 100));
 
   const cards: { key: FilterKey; label: string; value: number; icon: typeof Users }[] = [
     { key: "todos", label: "Total de leads", value: leads.length, icon: Users },
@@ -122,7 +133,7 @@ export default function ProspectB2BPage() {
       case "hoje_enviados":
         return contactedTodayIds.has(lead.id);
       case "ja_enviados":
-        return lead.status === "contatado";
+        return sentLeadIds.has(lead.id);
       case "todos":
       default:
         return true;
@@ -168,6 +179,9 @@ export default function ProspectB2BPage() {
             phone: l.phone,
             niche: l.niche,
           })),
+          // Se marcado, esses leads ficam reservados só pra quem importou
+          // (ownerId) — não entram no pool compartilhado de prospecção.
+          ownerId: reserveForMe ? currentUser?.id ?? null : null,
         }),
       });
       if (!res.ok) {
@@ -179,6 +193,7 @@ export default function ProspectB2BPage() {
       toast.success(`${data.inserted} leads importados. ${data.skippedExisting} já existiam.`);
       setImportOpen(false);
       setPreview(null);
+      setReserveForMe(false);
       refreshLeads();
     } catch (err) {
       console.error("[confirmImport]", err);
@@ -191,6 +206,7 @@ export default function ProspectB2BPage() {
   const closeModal = () => {
     setImportOpen(false);
     setPreview(null);
+    setReserveForMe(false);
   };
 
   const toggleFilter = (key: FilterKey) => {
@@ -201,8 +217,7 @@ export default function ProspectB2BPage() {
     <DashboardShell>
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">IVS Prospect B2B</h1>
-          <p className="text-sm text-muted-foreground">Prospecção organizada via WhatsApp</p>
+          <h1 className="text-2xl font-semibold tracking-tight">IVS Prospect B2B</h1>          <p className="text-sm text-muted-foreground">Prospecção organizada via WhatsApp</p>
         </div>
         <div className="flex gap-2">
           <Link href="/prospect-b2b/prospeccao">
@@ -255,7 +270,7 @@ export default function ProspectB2BPage() {
                   <p className="text-sm font-medium">Meta diária</p>
                 </div>
                 <span className="text-sm text-muted-foreground">
-                  {contactedToday} / {DAILY_GOAL} contatos
+                  {contactedToday} / {dailyGoal} contatos
                 </span>
               </div>
               <div className="h-2 w-full overflow-hidden rounded-full bg-accent">
@@ -360,6 +375,19 @@ export default function ProspectB2BPage() {
                       <p className="text-xs text-muted-foreground">Inválidos</p>
                     </div>
                   </div>
+
+                  <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-accent/50 p-3">
+                    <input
+                      type="checkbox"
+                      checked={reserveForMe}
+                      onChange={(e) => setReserveForMe(e.target.checked)}
+                      className="mt-0.5 h-4 w-4 rounded border-border"
+                    />
+                    <span className="text-sm text-muted-foreground">
+                      Reservar esses leads só para mim (não entram na fila de outros usuários)
+                    </span>
+                  </label>
+
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" onClick={() => setPreview(null)}>Escolher outro arquivo</Button>
                     <Button onClick={confirmImport} disabled={importing || preview.valid.length === 0}>
