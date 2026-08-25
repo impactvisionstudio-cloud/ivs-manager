@@ -97,9 +97,6 @@ export default function ProspectB2BPage() {
   const sentLeadIds = new Set(contacts.map((c) => c.leadId));
   const pendingSend = leads.filter((lead) => !sentLeadIds.has(lead.id)).length;
   const noWhatsapp = leads.filter((lead) => lead.status === "sem_whatsapp").length;
-  // "prospeccaocontatos" já vem filtrado por usuário logado (API), então
-  // sentLeadIds já reflete só os envios desse usuário — não usar mais
-  // lead.status aqui, que é global e misturaria Daniel com Eduardo.
   const alreadySent = sentLeadIds.size;
 
   const goalProgress = Math.min(100, Math.round((contactedToday / dailyGoal) * 100));
@@ -179,8 +176,6 @@ export default function ProspectB2BPage() {
             phone: l.phone,
             niche: l.niche,
           })),
-          // Se marcado, esses leads ficam reservados só pra quem importou
-          // (ownerId) — não entram no pool compartilhado de prospecção.
           ownerId: reserveForMe ? currentUser?.id ?? null : null,
         }),
       });
