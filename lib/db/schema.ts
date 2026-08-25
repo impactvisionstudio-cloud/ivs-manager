@@ -367,7 +367,10 @@ export const prospectLeads = pgTable("prospect_leads", {
   phone: text("phone").notNull(),
   niche: text("niche"),
   status: prospectLeadStatusEnum("status").notNull().default("novo"),
-  assignedTo: uuid("assigned_to").references(() => users.id),
+  // Dono exclusivo do lead (opcional). Se preenchido, só a fila diária
+  // desse usuário pode reservar/contatar esse lead — usado quando uma
+  // planilha é importada só para uma pessoa específica.
+  ownerId: uuid("owner_id").references(() => users.id),
   // Dia em que o lead foi reservado pra fila de prospecção (impede reuso em outro dia)
   assignedDate: date("assigned_date"),
   // Índice (1, 2 ou 3) da mensagem sorteada pra esse lead no dia em que foi reservado

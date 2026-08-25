@@ -63,9 +63,11 @@ function personalize(template: string, companyName: string): string {
 // só entra na fila de alguém uma vez por dia: se já tem assignedDate = hoje
 // E assignedTo = esse usuário, ele é reaproveitado (com a mesma mensagem já
 // sorteada); senão, sorteamos novos leads "novo" que NINGUÉM pegou hoje
-// ainda, até bater o restante da meta diária DESSE usuário, e gravamos
-// assignedDate/assignedMessageIndex/assignedTo neles — isso garante que
-// Daniel e Eduardo nunca disputem ou repitam o mesmo lead no mesmo dia.
+// ainda E que não têm dono exclusivo de outra pessoa (ownerId nulo ou igual
+// ao usuário atual), até bater o restante da meta diária DESSE usuário, e
+// gravamos assignedDate/assignedMessageIndex/assignedTo neles — isso
+// garante que Daniel e Eduardo nunca disputem ou repitam o mesmo lead no
+// mesmo dia, e que leads reservados (ownerId) só entrem na fila do dono.
 export async function GET() {
   const dbUser = await requireProspectUser();
   if (!dbUser) {
@@ -120,14 +122,15 @@ export async function GET() {
 
   if (faltamReservar > 0) {
     // Só entram leads que ninguém pegou hoje ainda (assignedDate nulo ou
-    // de outro dia).
+    // de outro dia) e que não têm dono exclusivo de outra pessoa.
     const candidatos = await db
       .select()
       .from(prospectLeads)
       .where(
         and(
           eq(prospectLeads.status, "novo"),
-          or(isNull(prospectLeads.assignedDate), sql`${prospectLeads.assignedDate} <> ${schedule.dateKeyBrasilia}`)
+          or(isNull(prospectLeads.assignedDate), sql`${prospectLeads.assignedDate} <> ${schedule.dateKeyBrasilia}`),
+          or(isNull(prospectLeads.ownerId), eq(prospectLeads.ownerId, dbUser.id))
         )
       )
       .limit(faltamReservar);
