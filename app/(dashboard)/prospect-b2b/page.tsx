@@ -91,7 +91,10 @@ export default function ProspectB2BPage() {
   const interested = leads.filter((l) => INTERESTED_STATUSES.includes(l.status)).length;
   const clients = leads.filter((l) => l.status === "cliente").length;
 
-  const sentLeadIds = new Set(contacts.map((c) => c.leadId));
+    const sentLeadIds = new Set([
+    ...contacts.map((c) => c.leadId),
+    ...leads.filter((lead) => lead.status !== "novo").map((lead) => lead.id),
+  ]);
   const pendingSend = leads.filter((lead) => !sentLeadIds.has(lead.id)).length;
   const noWhatsapp = leads.filter((lead) => lead.status === "sem_whatsapp").length;
   const alreadySent = sentLeadIds.size;
