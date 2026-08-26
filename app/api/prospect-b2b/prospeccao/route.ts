@@ -45,10 +45,14 @@ async function getDailyLimit(userId: string): Promise<number> {
   return Number.isFinite(globalValue) && globalValue > 0 ? globalValue : DEFAULT_DAILY_LIMIT;
 }
 
-// Troca [Empresa] pelo nome da empresa e [Vendedor] pelo primeiro nome de
-// quem está enviando (Daniel ou Eduardo).
-function personalize(template: string, companyName: string, vendorFirstName: string): string {
-  return template.replaceAll("[Empresa]", companyName).replaceAll("[Vendedor]", vendorFirstName);
+// Troca [Empresa] pelo nome da empresa, [vendedor]/[Vendedor] pelo primeiro
+// nome de quem está enviando (Daniel ou Eduardo) e {{nicho}} pelo nicho do lead.
+function personalize(template: string, companyName: string, vendorFirstName: string, niche: string): string {
+  return template
+    .replaceAll("[Empresa]", companyName)
+    .replaceAll("[vendedor]", vendorFirstName)
+    .replaceAll("[Vendedor]", vendorFirstName)
+    .replaceAll("{{nicho}}", niche);
 }
 
 // GET → fila de hoje, 100% isolada por dono do lead (owner_id). Cada
@@ -141,7 +145,7 @@ export async function GET() {
       telefone: lead.phone,
       nicho: lead.niche ?? "",
       messageId: idx,
-      text: personalize(template, lead.companyName, vendorFirstName),
+      text: personalize(template, lead.companyName, vendorFirstName, lead.niche ?? ""),
     };
   });
 
