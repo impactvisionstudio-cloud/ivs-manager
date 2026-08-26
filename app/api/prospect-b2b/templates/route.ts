@@ -1,26 +1,47 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { prospectMessageTemplates } from "@/lib/db/schema";
-import { eq } from "drizzle-orm";
+import { prospectMessageTemplates, users } from "@/lib/db/schema";
+import { eq, and } from "drizzle-orm";
+import { createClient } from "@/lib/supabase/server";
+import { ROLE_PERMISSIONS } from "@/types";
+import type { Permission, Role } from "@/types";
 
-const DEFAULT_TEMPLATES: Record<number, string> = {
-1: "Olá, {{empresa}}! Tudo bem? Muito prazer! Me chamo Daniel e trabalho com desenvolvimento de sites e posicionamento digital para {{nicho}}. Estava analisando a presença digital de vocês e percebi uma oportunidade que, na minha visão, poderia valorizar bastante a empresa e até facilitar a chegada de novos clientes. Inclusive, tive uma ideia específica pensando na empresa de vocês. Posso te mostrar?",
-2: "Olá, {{empresa}}! Tudo bem? Meu nome é Daniel e trabalho com desenvolvimento de sites e posicionamento digital para {{nicho}}. Estive conhecendo um pouco mais sobre a presença digital de vocês e encontrei alguns pontos que acredito que poderiam ser melhor aproveitados. Inclusive, pensei em uma solução específica para a empresa de vocês. Posso te mostrar rapidamente?",
-3: "Olá, {{empresa}}! Tudo certo? Sou o Daniel e trabalho ajudando {{nicho}} a melhorar sua presença digital através de sites profissionais e estratégias de posicionamento. Encontrei a {{empresa}} durante uma análise de empresas do segmento e achei o trabalho de vocês bem interessante. Vi uma oportunidade que poderia deixar a apresentação da empresa ainda mais profissional e ajudar vocês a transformar mais visitantes em clientes. Posso te mostrar a ideia que tive?",
-};
+const VALID_INDEXES = [1, 2, 3, 4, 5, 6];
+
+async function requireProspectUser() {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+
+  if (!authUser) return null;
+
+  const [dbUser] = await db.select().from(users).where(eq(users.authId, authUser.id));
+  if (!dbUser) return null;
+
+  const permissions = ROLE_PERMISSIONS[dbUser.role as Role] ?? [];
+  if (!permissions.includes("prospectb2b.use" as Permission)) return null;
+  return dbUser;
+}
 
 export const dynamic = "force-dynamic";
 export const revalidate = 0;
 
+// GET → só as mensagens do usuário logado. Não cria mais padrão automático
+// aqui, pois cada usuário já deve ter suas 6 mensagens criadas via
+// migração inicial (uma vez por pessoa, no banco).
 export async function GET() {
   try {
-    let items = await db.select().from(prospectMessageTemplates);
-    if (items.length === 0) {
-      items = await db
-        .insert(prospectMessageTemplates)
-        .values([1, 2, 3].map((index) => ({ index, content: DEFAULT_TEMPLATES[index] })))
-        .returning();
+    const dbUser = await requireProspectUser();
+    if (!dbUser) {
+      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
     }
+
+    const items = await db
+      .select()
+      .from(prospectMessageTemplates)
+      .where(eq(prospectMessageTemplates.ownerId, dbUser.id));
+
     items.sort((a, b) => a.index - b.index);
     return NextResponse.json({ items });
   } catch (err) {
@@ -31,25 +52,31 @@ export async function GET() {
 
 export async function PUT(req: NextRequest) {
   try {
+    const dbUser = await requireProspectUser();
+    if (!dbUser) {
+      return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+    }
+
     const body = await req.json();
     const { index, content } = body as { index: number; content: string };
-    if (![1, 2, 3].includes(index) || typeof content !== "string" || !content.trim()) {
+    if (!VALID_INDEXES.includes(index) || typeof content !== "string" || !content.trim()) {
       return NextResponse.json({ error: "Dados inválidos" }, { status: 400 });
     }
+
     const [existing] = await db
       .select()
       .from(prospectMessageTemplates)
-      .where(eq(prospectMessageTemplates.index, index));
+      .where(and(eq(prospectMessageTemplates.index, index), eq(prospectMessageTemplates.ownerId, dbUser.id)));
 
     let item;
     if (existing) {
       [item] = await db
         .update(prospectMessageTemplates)
         .set({ content, updatedAt: new Date() })
-        .where(eq(prospectMessageTemplates.index, index))
+        .where(and(eq(prospectMessageTemplates.index, index), eq(prospectMessageTemplates.ownerId, dbUser.id)))
         .returning();
     } else {
-      [item] = await db.insert(prospectMessageTemplates).values({ index, content }).returning();
+      [item] = await db.insert(prospectMessageTemplates).values({ index, content, ownerId: dbUser.id }).returning();
     }
     return NextResponse.json({ item });
   } catch (err) {

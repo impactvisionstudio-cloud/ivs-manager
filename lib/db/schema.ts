@@ -392,8 +392,9 @@ export const prospectContacts = pgTable("prospect_contacts", {
 // 3 modelos de mensagem editáveis, usados no sorteio da fila diária
 export const prospectMessageTemplates = pgTable("prospect_message_templates", {
   id: uuid("id").defaultRandom().primaryKey(),
-  index: integer("index").notNull().unique(), // 1, 2 ou 3
+  index: integer("index").notNull(), // 1 a 6 — único por owner_id, não mais global
   content: text("content").notNull(),
+  ownerId: uuid("owner_id").notNull().references(() => users.id),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 

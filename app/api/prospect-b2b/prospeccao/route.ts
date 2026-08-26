@@ -14,6 +14,7 @@ import { ROLE_PERMISSIONS } from "@/types";
 import type { Permission, Role } from "@/types";
 
 const DEFAULT_DAILY_LIMIT = 30;
+const TOTAL_TEMPLATES = 6;
 
 async function requireProspectUser() {
   const supabase = await createClient();
@@ -28,7 +29,6 @@ async function requireProspectUser() {
 
   const permissions = ROLE_PERMISSIONS[dbUser.role as Role] ?? [];
   if (!permissions.includes("prospectb2b.use" as Permission)) return null;
-
   return dbUser;
 }
 
@@ -45,8 +45,9 @@ async function getDailyLimit(userId: string): Promise<number> {
   return Number.isFinite(globalValue) && globalValue > 0 ? globalValue : DEFAULT_DAILY_LIMIT;
 }
 
-// Troca [Empresa] pelo nome da empresa, [vendedor]/[Vendedor] pelo primeiro
-// nome de quem está enviando (Daniel ou Eduardo) e {{nicho}} pelo nicho do lead.
+// Troca {{empresa}}, {{vendedor}} e {{nicho}} pelos valores reais.
+// Hoje o {{vendedor}} já vem fixo no texto de cada template (Daniel ou
+// Eduardo), então essa troca é só um fallback de segurança.
 function personalize(template: string, companyName: string, vendorFirstName: string, niche: string): string {
   return template
     .replace(/\[\s*empresa\s*\]/gi, companyName)
@@ -56,9 +57,10 @@ function personalize(template: string, companyName: string, vendorFirstName: str
     .replace(/\{\{\s*nicho\s*\}\}/gi, niche);
 }
 
-// GET → fila de hoje, 100% isolada por dono do lead (owner_id). Cada
-// usuário só sorteia entre os próprios leads "novo" — não existe mais
-// disputa ou mistura entre Daniel e Eduardo.
+// GET → fila de hoje, 100% isolada por dono do lead (owner_id) E por dono
+// das mensagens (owner_id em prospectMessageTemplates). Cada usuário só
+// sorteia entre os próprios leads "novo" e usa apenas as próprias 6
+// mensagens — não existe mais disputa ou mistura entre Daniel e Eduardo.
 export async function GET() {
   const dbUser = await requireProspectUser();
   if (!dbUser) {
@@ -92,7 +94,11 @@ export async function GET() {
     return NextResponse.json({ windowOpen: true, queue: [], contatadosHoje, restanteHoje: 0, dailyLimit });
   }
 
-  const templates = await db.select().from(prospectMessageTemplates);
+  // Só as mensagens desse usuário
+  const templates = await db
+    .select()
+    .from(prospectMessageTemplates)
+    .where(eq(prospectMessageTemplates.ownerId, dbUser.id));
   const templateByIndex = new Map(templates.map((t) => [t.index, t.content]));
 
   const jaReservados = await db
@@ -123,7 +129,7 @@ export async function GET() {
       .limit(faltamReservar);
 
     for (const lead of candidatos) {
-      const messageIndex = Math.floor(Math.random() * 3) + 1;
+      const messageIndex = Math.floor(Math.random() * TOTAL_TEMPLATES) + 1;
       await db
         .update(prospectLeads)
         .set({ assignedDate: schedule.dateKeyBrasilia, assignedMessageIndex: messageIndex, assignedTo: dbUser.id })
