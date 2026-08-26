@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { eq, inArray } from "drizzle-orm";
 import { db } from "@/lib/db";
-import { prospectLeads } from "@/lib/db/schema";
-import { inArray } from "drizzle-orm";
+import { prospectLeads, users } from "@/lib/db/schema";
+import { createClient } from "@/lib/supabase/server";
+import { ROLE_PERMISSIONS } from "@/types";
+import type { Permission, Role } from "@/types";
 
 interface ImportLead {
   companyName: string;
@@ -9,14 +12,31 @@ interface ImportLead {
   niche: string;
 }
 
+async function requireProspectUser() {
+  const supabase = await createClient();
+  const {
+    data: { user: authUser },
+  } = await supabase.auth.getUser();
+  if (!authUser) return null;
+
+  const [dbUser] = await db.select().from(users).where(eq(users.authId, authUser.id));
+  if (!dbUser) return null;
+
+  const permissions = ROLE_PERMISSIONS[dbUser.role as Role] ?? [];
+  if (!permissions.includes("prospectb2b.use" as Permission)) return null;
+
+  return dbUser;
+}
+
 export async function POST(req: NextRequest) {
+  const dbUser = await requireProspectUser();
+  if (!dbUser) {
+    return NextResponse.json({ error: "Sem permissão" }, { status: 403 });
+  }
+
   try {
     const body = await req.json();
     const incoming: ImportLead[] = body.leads ?? [];
-    // Se enviado, os leads importados ficam reservados exclusivamente
-    // pra esse usuário (não entram no pool compartilhado).
-    const ownerId: string | null = body.ownerId ?? null;
-
     if (!Array.isArray(incoming) || incoming.length === 0) {
       return NextResponse.json({ error: "Nenhum lead recebido para importar." }, { status: 400 });
     }
@@ -33,7 +53,8 @@ export async function POST(req: NextRequest) {
         companyName: l.companyName,
         phone: l.phone,
         niche: l.niche || null,
-        ownerId,
+        // Sempre exclusivo de quem importou — não existe mais pool compartilhado.
+        ownerId: dbUser.id,
       }));
       const result = await db.insert(prospectLeads).values(values).returning({ id: prospectLeads.id });
       inserted = result.length;

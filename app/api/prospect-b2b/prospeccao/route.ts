@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { and, eq, gte, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gte, sql } from "drizzle-orm";
 import { db } from "@/lib/db";
 import {
   prospectLeads,
@@ -15,10 +15,6 @@ import type { Permission, Role } from "@/types";
 
 const DEFAULT_DAILY_LIMIT = 30;
 
-// Confere login (Supabase Auth) + busca o usuário correspondente na tabela
-// `users` do app + confere se o cargo dele tem a permissão "prospectb2b.use"
-// (hoje: gestor e administrador, via ROLE_PERMISSIONS em @/types). Devolve
-// o usuário do banco (com o id em uuid usado nas FKs) ou null se não tiver acesso.
 async function requireProspectUser() {
   const supabase = await createClient();
   const {
@@ -36,12 +32,6 @@ async function requireProspectUser() {
   return dbUser;
 }
 
-// Limite diário de LEDs por usuário. Procura primeiro uma chave específica
-// do usuário ("daily_limit:<userId>"); se não existir, cai pro limite
-// global antigo ("daily_limit", pra não perder configuração que já existia)
-// e por último no padrão de 30. Pra mudar o limite de alguém no futuro,
-// basta criar/editar a linha com key = `daily_limit:${userId}` em
-// prospect_settings — não precisa mexer em código.
 async function getDailyLimit(userId: string): Promise<number> {
   const perUserRows = await db
     .select()
@@ -55,19 +45,15 @@ async function getDailyLimit(userId: string): Promise<number> {
   return Number.isFinite(globalValue) && globalValue > 0 ? globalValue : DEFAULT_DAILY_LIMIT;
 }
 
-function personalize(template: string, companyName: string): string {
-  return template.replaceAll("[Empresa]", companyName);
+// Troca [Empresa] pelo nome da empresa e [Vendedor] pelo primeiro nome de
+// quem está enviando (Daniel ou Eduardo).
+function personalize(template: string, companyName: string, vendorFirstName: string): string {
+  return template.replaceAll("[Empresa]", companyName).replaceAll("[Vendedor]", vendorFirstName);
 }
 
-// GET → devolve a fila de hoje, filtrada pelo usuário autenticado. Um lead
-// só entra na fila de alguém uma vez por dia: se já tem assignedDate = hoje
-// E assignedTo = esse usuário, ele é reaproveitado (com a mesma mensagem já
-// sorteada); senão, sorteamos novos leads "novo" que NINGUÉM pegou hoje
-// ainda E que não têm dono exclusivo de outra pessoa (ownerId nulo ou igual
-// ao usuário atual), até bater o restante da meta diária DESSE usuário, e
-// gravamos assignedDate/assignedMessageIndex/assignedTo neles — isso
-// garante que Daniel e Eduardo nunca disputem ou repitam o mesmo lead no
-// mesmo dia, e que leads reservados (ownerId) só entrem na fila do dono.
+// GET → fila de hoje, 100% isolada por dono do lead (owner_id). Cada
+// usuário só sorteia entre os próprios leads "novo" — não existe mais
+// disputa ou mistura entre Daniel e Eduardo.
 export async function GET() {
   const dbUser = await requireProspectUser();
   if (!dbUser) {
@@ -88,6 +74,7 @@ export async function GET() {
 
   const dailyLimit = await getDailyLimit(dbUser.id);
   const inicioDoDia = new Date(`${schedule.dateKeyBrasilia}T00:00:00-03:00`);
+  const vendorFirstName = dbUser.name.split(" ")[0];
 
   const contatadosHojeResult = await db
     .select({ count: sql<number>`count(distinct ${prospectContacts.leadId})` })
@@ -100,20 +87,17 @@ export async function GET() {
     return NextResponse.json({ windowOpen: true, queue: [], contatadosHoje, restanteHoje: 0, dailyLimit });
   }
 
-  // As 3 mensagens editáveis (index 1/2/3), cadastradas em prospect_message_templates.
   const templates = await db.select().from(prospectMessageTemplates);
   const templateByIndex = new Map(templates.map((t) => [t.index, t.content]));
 
-  // Leads já reservados pra hoje PRA ESSE usuário (reaproveita se a página
-  // for recarregada, sem misturar com a fila de outro usuário).
   const jaReservados = await db
     .select()
     .from(prospectLeads)
     .where(
       and(
         eq(prospectLeads.status, "novo"),
-        eq(prospectLeads.assignedDate, schedule.dateKeyBrasilia),
-        eq(prospectLeads.assignedTo, dbUser.id)
+        eq(prospectLeads.ownerId, dbUser.id),
+        eq(prospectLeads.assignedDate, schedule.dateKeyBrasilia)
       )
     );
 
@@ -121,16 +105,14 @@ export async function GET() {
   const novosReservados: (typeof prospectLeads.$inferSelect)[] = [];
 
   if (faltamReservar > 0) {
-    // Só entram leads que ninguém pegou hoje ainda (assignedDate nulo ou
-    // de outro dia) e que não têm dono exclusivo de outra pessoa.
     const candidatos = await db
       .select()
       .from(prospectLeads)
       .where(
         and(
           eq(prospectLeads.status, "novo"),
-          or(isNull(prospectLeads.assignedDate), sql`${prospectLeads.assignedDate} <> ${schedule.dateKeyBrasilia}`),
-          or(isNull(prospectLeads.ownerId), eq(prospectLeads.ownerId, dbUser.id))
+          eq(prospectLeads.ownerId, dbUser.id),
+          sql`(${prospectLeads.assignedDate} is null or ${prospectLeads.assignedDate} <> ${schedule.dateKeyBrasilia})`
         )
       )
       .limit(faltamReservar);
@@ -159,16 +141,13 @@ export async function GET() {
       telefone: lead.phone,
       nicho: lead.niche ?? "",
       messageId: idx,
-      text: personalize(template, lead.companyName),
+      text: personalize(template, lead.companyName, vendorFirstName),
     };
   });
 
   return NextResponse.json({ windowOpen: true, queue, contatadosHoje, restanteHoje, dailyLimit });
 }
 
-// POST → chamado quando o usuário clica em "Abrir no WhatsApp": grava o
-// histórico em prospect_contacts (mensagem exata que foi mostrada/enviada,
-// com sentBy = quem enviou) e marca o lead como "contatado".
 export async function POST(req: Request) {
   const dbUser = await requireProspectUser();
   if (!dbUser) {

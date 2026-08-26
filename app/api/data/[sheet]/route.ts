@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { eq } from "drizzle-orm";
+import { eq, or, isNull, and } from "drizzle-orm";
 import { db } from "@/lib/db";
 import { clients, agendaEvents, transactions, contracts, checklistItems, teamMembers, teamNotes, prospectLeads, prospectContacts, users } from "@/lib/db/schema";
 import { createClient } from "@/lib/supabase/server";
@@ -27,9 +27,6 @@ function parseDates(body: Record<string, unknown>, fields: string[]) {
   return out;
 }
 
-// Usado só pelos sheets do Prospect B2B ("prospectos" e "prospeccaocontatos"):
-// confere login + permissão "prospectb2b.use", igual ao endpoint
-// /api/prospect-b2b/prospeccao. Devolve o usuário do banco ou null.
 async function requireProspectAccess() {
   const supabase = await createClient();
   const {
@@ -52,10 +49,6 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ she
     return NextResponse.json({ error: `Módulo "${sheet}" inválido` }, { status: 400 });
   }
 
-  // Prospect B2B: exige permissão específica e, no caso dos contatos, só
-  // devolve os do próprio usuário autenticado — é isso que faz os
-  // contadores da página (contatados hoje, já enviados etc.) ficarem
-  // automaticamente separados por usuário, sem mexer na página em si.
   if (sheet === "prospectos" || sheet === "prospeccaocontatos") {
     const dbUser = await requireProspectAccess();
     if (!dbUser) {
@@ -65,9 +58,10 @@ export async function GET(_req: NextRequest, { params }: { params: Promise<{ she
       const items = await db.select().from(prospectContacts).where(eq(prospectContacts.sentBy, dbUser.id));
       return NextResponse.json({ items });
     }
-    // "prospectos" continua sendo a base compartilhada de leads (mesma
-    // lista de empresas pra prospectar) — só passou a exigir permissão.
-    const items = await db.select().from(prospectLeads);
+    // "prospectos": cada usuário só vê os leads que são dele (owner_id).
+    // Leads sem dono (legado) não aparecem mais pra ninguém até serem
+    // atribuídos via SQL.
+    const items = await db.select().from(prospectLeads).where(eq(prospectLeads.ownerId, dbUser.id));
     return NextResponse.json({ items });
   }
 

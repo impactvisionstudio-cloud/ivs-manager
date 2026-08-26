@@ -12,7 +12,6 @@ import { PROSPECT_LEAD_STATUS_LABELS } from "@/types";
 import { useCollection } from "@/lib/hooks/use-collection";
 import { parseSpreadsheet, type ParseResult } from "@/lib/prospect-import";
 import { ConfirmDeleteDialog } from "@/components/shared/confirm-delete-dialog";
-import { useAuthStore } from "@/lib/store/auth-store";
 import { toast } from "sonner";
 
 const STATUS_OPTIONS: ProspectLeadStatus[] = [
@@ -65,14 +64,12 @@ function isToday(dateStr: string) {
 export default function ProspectB2BPage() {
   const { items: leads, loading: loadingLeads, refresh: refreshLeads, update: updateLead, remove: removeLead } = useCollection<ProspectLead>("prospectos");
   const { items: contacts, loading: loadingContacts } = useCollection<ProspectContact>("prospeccaocontatos");
-  const currentUser = useAuthStore((s) => s.user);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [parsing, setParsing] = useState(false);
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<ParseResult | null>(null);
-  const [reserveForMe, setReserveForMe] = useState(false);
   const [deleting, setDeleting] = useState<ProspectLead | null>(null);
   const [activeFilter, setActiveFilter] = useState<FilterKey>("todos");
 
@@ -176,7 +173,6 @@ export default function ProspectB2BPage() {
             phone: l.phone,
             niche: l.niche,
           })),
-          ownerId: reserveForMe ? currentUser?.id ?? null : null,
         }),
       });
       if (!res.ok) {
@@ -188,7 +184,6 @@ export default function ProspectB2BPage() {
       toast.success(`${data.inserted} leads importados. ${data.skippedExisting} já existiam.`);
       setImportOpen(false);
       setPreview(null);
-      setReserveForMe(false);
       refreshLeads();
     } catch (err) {
       console.error("[confirmImport]", err);
@@ -201,7 +196,6 @@ export default function ProspectB2BPage() {
   const closeModal = () => {
     setImportOpen(false);
     setPreview(null);
-    setReserveForMe(false);
   };
 
   const toggleFilter = (key: FilterKey) => {
@@ -370,18 +364,6 @@ export default function ProspectB2BPage() {
                       <p className="text-xs text-muted-foreground">Inválidos</p>
                     </div>
                   </div>
-
-                  <label className="flex cursor-pointer items-start gap-2 rounded-lg border border-border bg-accent/50 p-3">
-                    <input
-                      type="checkbox"
-                      checked={reserveForMe}
-                      onChange={(e) => setReserveForMe(e.target.checked)}
-                      className="mt-0.5 h-4 w-4 rounded border-border"
-                    />
-                    <span className="text-sm text-muted-foreground">
-                      Reservar esses leads só para mim (não entram na fila de outros usuários)
-                    </span>
-                  </label>
 
                   <div className="flex justify-end gap-2">
                     <Button variant="ghost" onClick={() => setPreview(null)}>Escolher outro arquivo</Button>
