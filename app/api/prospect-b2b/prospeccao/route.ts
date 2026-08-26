@@ -13,6 +13,9 @@ import { createClient } from "@/lib/supabase/server";
 import { ROLE_PERMISSIONS } from "@/types";
 import type { Permission, Role } from "@/types";
 
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
+
 const DEFAULT_DAILY_LIMIT = 30;
 const TOTAL_TEMPLATES = 6;
 
