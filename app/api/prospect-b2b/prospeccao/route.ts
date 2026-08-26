@@ -49,10 +49,9 @@ async function getDailyLimit(userId: string): Promise<number> {
 // nome de quem está enviando (Daniel ou Eduardo) e {{nicho}} pelo nicho do lead.
 function personalize(template: string, companyName: string, vendorFirstName: string, niche: string): string {
   return template
-    .replaceAll("[Empresa]", companyName)
-    .replaceAll("[vendedor]", vendorFirstName)
-    .replaceAll("[Vendedor]", vendorFirstName)
-    .replaceAll("{{nicho}}", niche);
+    .replace(/\[\s*empresa\s*\]/gi, companyName)
+    .replace(/\[\s*vendedor\s*\]/gi, vendorFirstName)
+    .replace(/\{\{\s*nicho\s*\}\}/gi, niche);
 }
 
 // GET → fila de hoje, 100% isolada por dono do lead (owner_id). Cada
