@@ -50,7 +50,9 @@ async function getDailyLimit(userId: string): Promise<number> {
 function personalize(template: string, companyName: string, vendorFirstName: string, niche: string): string {
   return template
     .replace(/\[\s*empresa\s*\]/gi, companyName)
+    .replace(/\{\{\s*empresa\s*\}\}/gi, companyName)
     .replace(/\[\s*vendedor\s*\]/gi, vendorFirstName)
+    .replace(/\{\{\s*vendedor\s*\}\}/gi, vendorFirstName)
     .replace(/\{\{\s*nicho\s*\}\}/gi, niche);
 }
 
