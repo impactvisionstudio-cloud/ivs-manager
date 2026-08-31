@@ -71,6 +71,8 @@ export default function ProspectB2BPage() {
   const [importing, setImporting] = useState(false);
   const [preview, setPreview] = useState<ParseResult | null>(null);
   const [deleting, setDeleting] = useState<ProspectLead | null>(null);
+  const [deletingAll, setDeletingAll] = useState(false);
+  const [deletingAllLoading, setDeletingAllLoading] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterKey>("todos");
 
   const [dailyGoal, setDailyGoal] = useState(40);
@@ -205,11 +207,28 @@ export default function ProspectB2BPage() {
     setActiveFilter((prev) => (prev === key ? "todos" : key));
   };
 
+  const handleDeleteAll = async () => {
+    if (leads.length === 0) return;
+    setDeletingAllLoading(true);
+    try {
+      await Promise.all(leads.map((lead) => removeLead(lead.id)));
+      toast.success("Todos os leads foram apagados.");
+    } catch (err) {
+      console.error("[handleDeleteAll]", err);
+      toast.error("Erro ao apagar todos os leads. Tente novamente.");
+    } finally {
+      setDeletingAllLoading(false);
+      setDeletingAll(false);
+      refreshLeads();
+    }
+  };
+
   return (
     <DashboardShell>
       <div className="mb-6 flex flex-col justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-semibold tracking-tight">IVS Prospect B2B</h1>          <p className="text-sm text-muted-foreground">Prospecção organizada via WhatsApp</p>
+          <h1 className="text-2xl font-semibold tracking-tight">IVS Prospect B2B</h1>
+          <p className="text-sm text-muted-foreground">Prospecção organizada via WhatsApp</p>
         </div>
         <div className="flex gap-2">
           <Link href="/prospect-b2b/prospeccao">
@@ -219,6 +238,14 @@ export default function ProspectB2BPage() {
           </Link>
           <Button onClick={() => setImportOpen(true)}>
             <Upload className="h-4 w-4" /> Importar leads
+          </Button>
+          <Button
+            variant="ghost"
+            className="border border-danger/40 text-danger hover:bg-danger/10"
+            onClick={() => setDeletingAll(true)}
+            disabled={leads.length === 0}
+          >
+            <Trash2 className="h-4 w-4" /> Apagar todos
           </Button>
         </div>
       </div>
@@ -386,6 +413,13 @@ export default function ProspectB2BPage() {
         onOpenChange={(o) => !o && setDeleting(null)}
         itemName={deleting?.companyName}
         onConfirm={() => deleting && removeLead(deleting.id)}
+      />
+
+      <ConfirmDeleteDialog
+        open={deletingAll}
+        onOpenChange={(o) => !deletingAllLoading && !o && setDeletingAll(false)}
+        itemName={`todos os ${leads.length} leads`}
+        onConfirm={handleDeleteAll}
       />
     </DashboardShell>
   );
